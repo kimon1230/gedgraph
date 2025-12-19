@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# AI Assistant Instructions
+CLAUDE.md
+.cursorrules
+.cursor/
+.github/copilot-instructions.md
+.aider*
+.continue/
+
+# Output files
+*.dot
+*.pdf
+*.png
+*.svg
+
+# OS
+.DS_Store
+Thumbs.db

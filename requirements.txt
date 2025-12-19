@@ -1,0 +1,6 @@
+ged4py>=0.4.4
+graphviz>=0.20.1
+pytest>=7.4.0
+black>=23.0.0
+ruff>=0.1.0
+pip-audit>=2.6.0
