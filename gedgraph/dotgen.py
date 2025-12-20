@@ -207,7 +207,7 @@ class DotGenerator:
             individual: Individual record
 
         Returns:
-            Formatted label string
+            Formatted label string with escaped quotes
         """
         name = self.parser.get_name(individual)
         birth = self.parser.get_birth_year(individual)
@@ -217,9 +217,13 @@ class DotGenerator:
             birth_str = birth if birth else "?"
             death_str = death if death else ""
             if death_str:
-                return f"{name}\\n({birth_str} - {death_str})"
-            return f"{name}\\n({birth_str} - )"
-        return name
+                label = f"{name}\\n({birth_str} - {death_str})"
+            else:
+                label = f"{name}\\n({birth_str} - )"
+        else:
+            label = name
+
+        return label.replace('"', '\\"')
 
     def _escape_id(self, xref_id: str) -> str:
         """

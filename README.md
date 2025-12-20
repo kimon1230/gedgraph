@@ -53,7 +53,7 @@ python gedgraph.py relationship family.ged @I10@ @I20@ -o output.dot
 ```
 
 Options:
-- `-d, --max-depth`: Maximum search depth (default: 10)
+- `-d, --max-depth`: Maximum search depth (default: 50)
 
 Example:
 ```bash
