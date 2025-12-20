@@ -54,8 +54,8 @@ Examples:
         "-d",
         "--max-depth",
         type=int,
-        default=10,
-        help="Maximum search depth (default: 10)",
+        default=50,
+        help="Maximum search depth (default: 50)",
     )
 
     args = parser.parse_args()

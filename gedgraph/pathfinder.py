@@ -117,7 +117,7 @@ class PathFinder:
         return pedigree
 
     def find_relationship_paths(
-        self, start_id: str, end_id: str, max_depth: int = 10
+        self, start_id: str, end_id: str, max_depth: int = 50
     ) -> List[RelationshipPath]:
         """
         Find all relationship paths between two individuals using BFS.
@@ -268,7 +268,7 @@ class PathFinder:
         return BloodType.HALF
 
     def get_shortest_paths(
-        self, start_id: str, end_id: str, max_depth: int = 10
+        self, start_id: str, end_id: str, max_depth: int = 50
     ) -> List[RelationshipPath]:
         """
         Find shortest relationship paths with proper sorting.
