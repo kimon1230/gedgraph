@@ -68,6 +68,9 @@ This ensures proper prioritization per requirements.
 
 **Key Methods**:
 - `find_pedigree()`: BFS to find ancestors up to N generations
+- `find_pedigree_with_generations()`: Find ancestors with generation tracking
+- `find_pedigree_split()`: Find paternal and maternal pedigrees separately
+- `find_descendants()`: Find descendants with generation tracking
 - `find_relationship_paths()`: BFS to find all paths between two individuals
 - `get_shortest_paths()`: Find and sort shortest paths
 - `_get_neighbors()`: Get all adjacent individuals in the graph
@@ -80,15 +83,27 @@ This ensures proper prioritization per requirements.
 - `DotGenerator`: Creates DOT syntax for charts
 
 **Key Methods**:
-- `generate_pedigree()`: Create pedigree chart DOT file
+- `generate_pedigree()`: Create pedigree chart DOT file (ancestors only)
+- `generate_hourglass()`: Create hourglass chart DOT file (vertical split)
+- `generate_bowtie()`: Create bowtie chart DOT file (horizontal split)
 - `generate_relationship()`: Create relationship chart DOT file with spouse nodes
 - `_format_individual_label()`: Format names with dates in (YYYY - YYYY) format
 - `_describe_relationship()`: Generate human-readable relationship description
 
+**Chart Types**:
+- **Pedigree**: Ancestors only, top-to-bottom layout
+- **Hourglass**: Two variants with vertical layout (rankdir=TB)
+  - `ancestor-split`: Father's line above root, mother's line below root
+  - `descendants`: Ancestors above root, descendants below root
+- **Bowtie**: Two variants with horizontal layout (rankdir=LR)
+  - `ancestor-split`: Father's line left of root, mother's line right of root
+  - `descendants`: Ancestors left of root, descendants right of root
+- **Relationship**: Path between two individuals with spouses
+
 **DOT Generation**:
-- Uses `rankdir=BT` (bottom-to-top) for pedigree charts
-- Uses `rankdir=TB` (top-to-bottom) for relationship charts
-- Color codes nodes: lightcoral (start), lightblue (end), lightgreen (bloodline), lightyellow (spouses)
+- Uses `rankdir=TB` (top-to-bottom) for pedigree, hourglass, and relationship charts
+- Uses `rankdir=LR` (left-to-right) for bowtie charts
+- Color codes nodes: lightcoral (start/root), lightblue (end), lightgreen (bloodline), lightyellow (spouses)
 - Spouse nodes positioned using `{rank=same; ...}` constraints
 - Marriage status indicated by line style: solid (married), dashed (unmarried)
 - Spouse lines use `dir=none` and `constraint=false` to avoid affecting layout
@@ -100,7 +115,17 @@ This ensures proper prioritization per requirements.
 
 **Commands**:
 - `pedigree`: Generate ancestor chart
-- `relationship`: Generate relationship chart
+- `relationship`: Generate relationship chart between two individuals
+- `hourglass`: Generate hourglass chart (vertical split layout)
+- `bowtie`: Generate bowtie chart (horizontal split layout)
+
+**Common Options**:
+- `-o, --output`: Output DOT file path (required for all commands)
+- `-g, --generations`: Number of generations (default: 4, used by pedigree/hourglass/bowtie)
+- `-d, --max-depth`: Maximum search depth (default: 50, used by relationship)
+- `-v, --variant`: Chart variant (used by hourglass/bowtie)
+  - `ancestor-split`: Split by parental lines
+  - `descendants`: Split by ancestors/descendants
 
 **Error Handling**:
 - Validates GEDCOM file exists
@@ -184,10 +209,25 @@ make audit
 
 ### Adding a New Chart Type
 
-1. Add new subcommand in `cli.py`
-2. Implement generation logic in `dotgen.py`
+1. Add new generation method in `dotgen.py` (e.g., `generate_newchart()`)
+   - Use PathFinder methods to gather individuals
+   - Organize individuals by generation or other criteria
+   - Generate DOT syntax with appropriate rankdir and constraints
+2. Add new subcommand in `cli.py`
+   - Create subparser with appropriate arguments
+   - Handle command in main() function
+   - Add error handling and user feedback
 3. Add tests in `tests/test_dotgen.py`
-4. Update README.md with usage examples
+   - Test successful generation
+   - Test error cases
+   - Verify DOT output contains expected elements
+4. Update README.md and DEVELOPER.md with usage examples
+
+**Example**: The hourglass and bowtie charts were added following this pattern:
+- They reuse PathFinder's `find_pedigree_with_generations()` and `find_descendants()`
+- They organize individuals into a generations_map with positive/negative generation numbers
+- They use rankdir=TB (hourglass) or rankdir=LR (bowtie) for different orientations
+- They support variants via a `variant` parameter
 
 ### Adding New Relationship Metrics
 
@@ -215,8 +255,8 @@ For very large GEDCOM files (>100K individuals), consider:
 
 ### Path Finding Performance
 
-- Default max_depth of 10 handles most genealogies
-- Increase max_depth for distant relationships
+- Default max_depth of 50 handles most genealogies
+- Increase max_depth for very distant relationships
 - Very large families may have many equally short paths
 
 ## Dependencies

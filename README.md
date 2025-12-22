@@ -6,6 +6,8 @@ Generate genealogical charts from GEDCOM files using GraphViz.
 
 - **Pedigree Charts**: Visualize ancestors of an individual
 - **Relationship Charts**: Find and visualize relationships between two individuals
+- **Hourglass Charts**: Show ancestors and descendants or split by parental lines
+- **Bowtie Charts**: Horizontal hourglass layout with left-right orientation
 - **Smart Path Finding**: Automatically finds the shortest relationship path using breadth-first search
 - **Relationship Prioritization**: Prefers blood relationships via male line, then female line, then half-blood relationships
 - **Multiple Path Detection**: Identifies when multiple equally short paths exist
@@ -59,6 +61,38 @@ Example:
 ```bash
 python gedgraph.py relationship family.ged @I1@ @I50@ -d 15 -o relationship.dot
 ```
+
+### Hourglass Chart
+
+Visualize ancestors and descendants or split by parental lines:
+
+```bash
+# Ancestors above, descendants below
+python gedgraph.py hourglass family.ged @I10@ -v descendants -o hourglass.dot
+
+# Father's line above, mother's line below
+python gedgraph.py hourglass family.ged @I10@ -v ancestor-split -o hourglass.dot
+```
+
+Options:
+- `-g, --generations`: Number of generations in each direction (default: 4)
+- `-v, --variant`: Chart variant - `ancestor-split` or `descendants` (default: ancestor-split)
+
+### Bowtie Chart
+
+Horizontal hourglass layout with left-right orientation:
+
+```bash
+# Ancestors left, descendants right
+python gedgraph.py bowtie family.ged @I10@ -v descendants -o bowtie.dot
+
+# Father's line left, mother's line right
+python gedgraph.py bowtie family.ged @I10@ -v ancestor-split -o bowtie.dot
+```
+
+Options:
+- `-g, --generations`: Number of generations in each direction (default: 4)
+- `-v, --variant`: Chart variant - `ancestor-split` or `descendants` (default: ancestor-split)
 
 ### Rendering DOT Files
 
