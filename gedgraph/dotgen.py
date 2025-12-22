@@ -1,8 +1,8 @@
 """Generate GraphViz DOT files for genealogical charts."""
 
-from typing import List, Set
+from typing import List, Set, Dict
 
-from .pathfinder import RelationshipPath, RelationType
+from .pathfinder import PathFinder, RelationshipPath, RelationType
 
 
 class DotGenerator:
@@ -32,9 +32,22 @@ class DotGenerator:
         if not individual:
             raise ValueError(f"Individual {individual_id} not found")
 
+        # Use PathFinder to get pedigree with generation tracking
+        pathfinder = PathFinder(self.parser)
+        pedigree_list = pathfinder.find_pedigree_with_generations(
+            individual_id, generations
+        )
+
+        # Group individuals by generation
+        generations_map: Dict[int, List] = {}
+        for ind, gen in pedigree_list:
+            if gen not in generations_map:
+                generations_map[gen] = []
+            generations_map[gen].append(ind)
+
         lines = [
             "digraph Pedigree {",
-            "  rankdir=BT;",
+            "  rankdir=TB;",
             '  node [shape=box, style="rounded,filled", fillcolor=lightblue];',
             "",
             f"  // Pedigree chart for {self.parser.get_name(individual)}",
@@ -43,46 +56,326 @@ class DotGenerator:
             "",
         ]
 
-        visited = set()
-        self._add_pedigree_nodes(individual, lines, visited, 0, generations)
+        visited_individuals = set()
+
+        # Process generations from highest (oldest ancestors) to lowest (root)
+        for gen_num in sorted(generations_map.keys(), reverse=True):
+            individuals = generations_map[gen_num]
+            ranksame_nodes = []
+
+            for ind in individuals:
+                node_id = self._escape_id(ind.xref_id)
+                label = self._format_individual_label(ind)
+
+                # Color root differently
+                fillcolor = "lightcoral" if gen_num == 0 else "lightgreen"
+                lines.append(f'  {node_id} [label="{label}", fillcolor={fillcolor}];')
+                ranksame_nodes.append(node_id)
+                visited_individuals.add(ind.xref_id)
+
+            # Add ranksame constraint for this generation
+            if ranksame_nodes:
+                nodes_str = "; ".join(ranksame_nodes)
+                lines.append(f"  {{rank=same; {nodes_str};}}")
+
+        lines.append("")
+
+        # Add parent-child edges
+        for gen_num in sorted(generations_map.keys()):
+            if gen_num > 0:  # Has parents
+                for ind in generations_map[gen_num]:
+                    father, mother = self.parser.get_parents(ind)
+                    child_node = self._escape_id(ind.xref_id)
+
+                    if father and father.xref_id in visited_individuals:
+                        father_node = self._escape_id(father.xref_id)
+                        lines.append(f"  {father_node} -> {child_node};")
+
+                    if mother and mother.xref_id in visited_individuals:
+                        mother_node = self._escape_id(mother.xref_id)
+                        lines.append(f"  {mother_node} -> {child_node};")
 
         lines.append("}")
         return "\n".join(lines)
 
-    def _add_pedigree_nodes(
-        self, individual, lines: List[str], visited: Set[str], gen: int, max_gen: int
-    ):
+    def generate_hourglass(
+        self, individual_id: str, generations: int = 4, variant: str = "ancestor-split"
+    ) -> str:
         """
-        Recursively add nodes and edges for pedigree chart.
+        Generate DOT file for hourglass chart.
 
         Args:
-            individual: Current individual
-            lines: List to append DOT lines to
-            visited: Set of visited individual IDs
-            gen: Current generation
-            max_gen: Maximum generations to include
+            individual_id: Center individual ID
+            generations: Number of generations in each direction
+            variant: "ancestor-split" (father above, mother below) or
+                    "descendants" (ancestors above, descendants below)
+
+        Returns:
+            DOT format string
         """
-        if not individual or gen > max_gen or individual.xref_id in visited:
-            return
+        individual = self.parser.get_individual(individual_id)
+        if not individual:
+            raise ValueError(f"Individual {individual_id} not found")
 
-        visited.add(individual.xref_id)
+        pathfinder = PathFinder(self.parser)
+        generations_map: Dict[int, List] = {}
 
-        node_id = self._escape_id(individual.xref_id)
-        label = self._format_individual_label(individual)
-        lines.append(f'  {node_id} [label="{label}"];')
-
-        if gen < max_gen:
+        if variant == "ancestor-split":
+            # Father's pedigree above (positive generations)
+            # Mother's pedigree below (negative generations)
+            # Root at generation 0
             father, mother = self.parser.get_parents(individual)
 
-            if father:
-                father_id = self._escape_id(father.xref_id)
-                lines.append(f"  {father_id} -> {node_id};")
-                self._add_pedigree_nodes(father, lines, visited, gen + 1, max_gen)
+            # Add root
+            generations_map[0] = [individual]
 
+            # Get paternal ancestors
+            if father:
+                paternal_ancestors = pathfinder.find_pedigree_with_generations(
+                    father.xref_id, generations - 1
+                )
+                for ind, gen in paternal_ancestors:
+                    # Adjust to positive generations (father line goes above)
+                    adj_gen = gen + 1
+                    if adj_gen not in generations_map:
+                        generations_map[adj_gen] = []
+                    generations_map[adj_gen].append(ind)
+
+            # Get maternal ancestors
             if mother:
-                mother_id = self._escape_id(mother.xref_id)
-                lines.append(f"  {mother_id} -> {node_id};")
-                self._add_pedigree_nodes(mother, lines, visited, gen + 1, max_gen)
+                maternal_ancestors = pathfinder.find_pedigree_with_generations(
+                    mother.xref_id, generations - 1
+                )
+                for ind, gen in maternal_ancestors:
+                    # Adjust to negative generations (mother line goes below)
+                    adj_gen = -(gen + 1)
+                    if adj_gen not in generations_map:
+                        generations_map[adj_gen] = []
+                    generations_map[adj_gen].append(ind)
+
+        elif variant == "descendants":
+            # Ancestors above (positive generations)
+            # Descendants below (negative generations)
+            # Root at generation 0
+
+            # Get ancestors
+            ancestors = pathfinder.find_pedigree_with_generations(
+                individual_id, generations
+            )
+            for ind, gen in ancestors:
+                if gen not in generations_map:
+                    generations_map[gen] = []
+                generations_map[gen].append(ind)
+
+            # Get descendants
+            descendants = pathfinder.find_descendants(individual_id, generations)
+            for ind, gen in descendants:
+                # Make generation negative for descendants (except root)
+                if gen > 0:
+                    adj_gen = -gen
+                    if adj_gen not in generations_map:
+                        generations_map[adj_gen] = []
+                    generations_map[adj_gen].append(ind)
+
+        else:
+            raise ValueError(f"Unknown variant: {variant}")
+
+        lines = [
+            "digraph Hourglass {",
+            "  rankdir=TB;",
+            '  node [shape=box, style="rounded,filled", fillcolor=lightblue];',
+            "",
+            f"  // Hourglass chart for {self.parser.get_name(individual)}",
+            f"  // Root: {individual_id}",
+            f"  // Variant: {variant}",
+            f"  // Generations: {generations}",
+            "",
+        ]
+
+        visited_individuals = set()
+
+        # Process generations from highest to lowest
+        for gen_num in sorted(generations_map.keys(), reverse=True):
+            individuals = generations_map[gen_num]
+            ranksame_nodes = []
+
+            for ind in individuals:
+                node_id = self._escape_id(ind.xref_id)
+                label = self._format_individual_label(ind)
+
+                # Color root differently
+                fillcolor = "lightcoral" if gen_num == 0 else "lightgreen"
+                lines.append(f'  {node_id} [label="{label}", fillcolor={fillcolor}];')
+                ranksame_nodes.append(node_id)
+                visited_individuals.add(ind.xref_id)
+
+            # Add ranksame constraint for this generation
+            if ranksame_nodes:
+                nodes_str = "; ".join(ranksame_nodes)
+                lines.append(f"  {{rank=same; {nodes_str};}}")
+
+        lines.append("")
+
+        # Add edges based on relationships
+        for gen_num in sorted(generations_map.keys()):
+            for ind in generations_map[gen_num]:
+                node_id = self._escape_id(ind.xref_id)
+
+                # Add parent-child edges
+                father, mother = self.parser.get_parents(ind)
+                if father and father.xref_id in visited_individuals:
+                    father_node = self._escape_id(father.xref_id)
+                    lines.append(f"  {father_node} -> {node_id};")
+
+                if mother and mother.xref_id in visited_individuals:
+                    mother_node = self._escape_id(mother.xref_id)
+                    lines.append(f"  {mother_node} -> {node_id};")
+
+        lines.append("}")
+        return "\n".join(lines)
+
+    def generate_bowtie(
+        self, individual_id: str, generations: int = 4, variant: str = "ancestor-split"
+    ) -> str:
+        """
+        Generate DOT file for bowtie chart (horizontal hourglass).
+
+        Args:
+            individual_id: Center individual ID
+            generations: Number of generations in each direction
+            variant: "ancestor-split" (father left, mother right) or
+                    "descendants" (ancestors left, descendants right)
+
+        Returns:
+            DOT format string
+        """
+        individual = self.parser.get_individual(individual_id)
+        if not individual:
+            raise ValueError(f"Individual {individual_id} not found")
+
+        pathfinder = PathFinder(self.parser)
+        generations_map: Dict[int, List] = {}
+
+        if variant == "ancestor-split":
+            # Father's pedigree left (negative generations)
+            # Mother's pedigree right (positive generations)
+            # Root at generation 0
+            father, mother = self.parser.get_parents(individual)
+
+            # Add root
+            generations_map[0] = [individual]
+
+            # Get paternal ancestors
+            if father:
+                paternal_ancestors = pathfinder.find_pedigree_with_generations(
+                    father.xref_id, generations - 1
+                )
+                for ind, gen in paternal_ancestors:
+                    # Adjust to negative generations (father line goes left)
+                    adj_gen = -(gen + 1)
+                    if adj_gen not in generations_map:
+                        generations_map[adj_gen] = []
+                    generations_map[adj_gen].append(ind)
+
+            # Get maternal ancestors
+            if mother:
+                maternal_ancestors = pathfinder.find_pedigree_with_generations(
+                    mother.xref_id, generations - 1
+                )
+                for ind, gen in maternal_ancestors:
+                    # Adjust to positive generations (mother line goes right)
+                    adj_gen = gen + 1
+                    if adj_gen not in generations_map:
+                        generations_map[adj_gen] = []
+                    generations_map[adj_gen].append(ind)
+
+        elif variant == "descendants":
+            # Ancestors left (negative generations)
+            # Descendants right (positive generations)
+            # Root at generation 0
+
+            # Get ancestors
+            ancestors = pathfinder.find_pedigree_with_generations(
+                individual_id, generations
+            )
+            for ind, gen in ancestors:
+                # Make generation negative for ancestors (except root)
+                if gen > 0:
+                    adj_gen = -gen
+                    if adj_gen not in generations_map:
+                        generations_map[adj_gen] = []
+                    generations_map[adj_gen].append(ind)
+                else:
+                    # Root at 0
+                    if 0 not in generations_map:
+                        generations_map[0] = []
+                    generations_map[0].append(ind)
+
+            # Get descendants
+            descendants = pathfinder.find_descendants(individual_id, generations)
+            for ind, gen in descendants:
+                # Descendants use positive generations
+                if gen > 0:
+                    if gen not in generations_map:
+                        generations_map[gen] = []
+                    generations_map[gen].append(ind)
+
+        else:
+            raise ValueError(f"Unknown variant: {variant}")
+
+        lines = [
+            "digraph Bowtie {",
+            "  rankdir=LR;",
+            '  node [shape=box, style="rounded,filled", fillcolor=lightblue];',
+            "",
+            f"  // Bowtie chart for {self.parser.get_name(individual)}",
+            f"  // Root: {individual_id}",
+            f"  // Variant: {variant}",
+            f"  // Generations: {generations}",
+            "",
+        ]
+
+        visited_individuals = set()
+
+        # Process generations from left to right (negative to positive)
+        for gen_num in sorted(generations_map.keys()):
+            individuals = generations_map[gen_num]
+            ranksame_nodes = []
+
+            for ind in individuals:
+                node_id = self._escape_id(ind.xref_id)
+                label = self._format_individual_label(ind)
+
+                # Color root differently
+                fillcolor = "lightcoral" if gen_num == 0 else "lightgreen"
+                lines.append(f'  {node_id} [label="{label}", fillcolor={fillcolor}];')
+                ranksame_nodes.append(node_id)
+                visited_individuals.add(ind.xref_id)
+
+            # Add ranksame constraint for this generation
+            if ranksame_nodes:
+                nodes_str = "; ".join(ranksame_nodes)
+                lines.append(f"  {{rank=same; {nodes_str};}}")
+
+        lines.append("")
+
+        # Add edges based on relationships
+        for gen_num in sorted(generations_map.keys()):
+            for ind in generations_map[gen_num]:
+                node_id = self._escape_id(ind.xref_id)
+
+                # Add parent-child edges
+                father, mother = self.parser.get_parents(ind)
+                if father and father.xref_id in visited_individuals:
+                    father_node = self._escape_id(father.xref_id)
+                    lines.append(f"  {father_node} -> {node_id};")
+
+                if mother and mother.xref_id in visited_individuals:
+                    mother_node = self._escape_id(mother.xref_id)
+                    lines.append(f"  {mother_node} -> {node_id};")
+
+        lines.append("}")
+        return "\n".join(lines)
 
     def generate_relationship(self, paths: List[RelationshipPath]) -> str:
         """

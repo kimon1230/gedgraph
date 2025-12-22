@@ -116,6 +116,114 @@ class PathFinder:
 
         return pedigree
 
+    def find_pedigree_with_generations(
+        self, individual_id: str, generations: int = 4
+    ) -> List[Tuple]:
+        """
+        Generate pedigree (ancestors) with generation tracking.
+
+        Args:
+            individual_id: ID of the individual
+            generations: Number of generations to include
+
+        Returns:
+            List of (individual, generation_number) tuples where
+            generation 0 = root, 1 = parents, 2 = grandparents, etc.
+        """
+        pedigree = []
+        individual = self.parser.get_individual(individual_id)
+        if not individual:
+            return pedigree
+
+        queue = deque([(individual, 0)])
+        visited = {individual.xref_id}
+
+        while queue:
+            current, gen = queue.popleft()
+            pedigree.append((current, gen))
+
+            if gen < generations:
+                father, mother = self.parser.get_parents(current)
+                for parent in [father, mother]:
+                    if parent and parent.xref_id not in visited:
+                        visited.add(parent.xref_id)
+                        queue.append((parent, gen + 1))
+
+        return pedigree
+
+    def find_descendants(self, individual_id: str, generations: int = 4) -> List[Tuple]:
+        """
+        Find descendants of an individual with generation tracking.
+
+        Args:
+            individual_id: ID of the individual
+            generations: Number of generations to include
+
+        Returns:
+            List of (individual, generation_number) tuples where
+            generation 0 = root, 1 = children, 2 = grandchildren, etc.
+        """
+        descendants = []
+        individual = self.parser.get_individual(individual_id)
+        if not individual:
+            return descendants
+
+        queue = deque([(individual, 0)])
+        visited = {individual.xref_id}
+
+        while queue:
+            current, gen = queue.popleft()
+            descendants.append((current, gen))
+
+            if gen < generations:
+                children = self.parser.get_children(current)
+                for child in children:
+                    if child and child.xref_id not in visited:
+                        visited.add(child.xref_id)
+                        queue.append((child, gen + 1))
+
+        return descendants
+
+    def find_pedigree_split(
+        self, individual_id: str, generations: int = 4
+    ) -> Tuple[List[Tuple], List[Tuple]]:
+        """
+        Find paternal and maternal pedigrees separately.
+
+        Args:
+            individual_id: ID of the individual
+            generations: Number of generations to include
+
+        Returns:
+            Tuple of (paternal_ancestors, maternal_ancestors) where each is
+            a list of (individual, generation_number) tuples
+        """
+        individual = self.parser.get_individual(individual_id)
+        if not individual:
+            return ([], [])
+
+        father, mother = self.parser.get_parents(individual)
+
+        paternal_ancestors = []
+        if father:
+            # Get father's pedigree
+            father_pedigree = self.find_pedigree_with_generations(
+                father.xref_id, generations - 1
+            )
+            # Adjust generation numbers (add 1 since father is 1 generation up)
+            paternal_ancestors = [(ind, gen + 1) for ind, gen in father_pedigree]
+
+        maternal_ancestors = []
+        if mother:
+            # Get mother's pedigree
+            mother_pedigree = self.find_pedigree_with_generations(
+                mother.xref_id, generations - 1
+            )
+            # Adjust generation numbers (add 1 since mother is 1 generation up)
+            maternal_ancestors = [(ind, gen + 1) for ind, gen in mother_pedigree]
+
+        return (paternal_ancestors, maternal_ancestors)
+
     def find_relationship_paths(
         self, start_id: str, end_id: str, max_depth: int = 50
     ) -> List[RelationshipPath]:

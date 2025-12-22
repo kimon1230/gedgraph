@@ -16,14 +16,30 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Generate pedigree chart for individual @I10@
-  gedgraph pedigree family.ged @I10@ -o output.dot
+  # Generate pedigree chart (ancestors only, top-to-bottom)
+  gedgraph pedigree family.ged @I10@ -o pedigree.dot
+  gedgraph pedigree family.ged @I10@ -g 5 -o pedigree.dot
 
   # Generate relationship chart between two individuals
-  gedgraph relationship family.ged @I10@ @I20@ -o output.dot
+  gedgraph relationship family.ged @I10@ @I20@ -o relationship.dot
+  gedgraph relationship family.ged @I10@ @I20@ -d 30 -o relationship.dot
 
-  # Specify number of generations for pedigree
-  gedgraph pedigree family.ged @I10@ -g 5 -o output.dot
+  # Generate hourglass chart - father above, mother below
+  gedgraph hourglass family.ged @I10@ -v ancestor-split -o hourglass.dot
+
+  # Generate hourglass chart - ancestors above, descendants below
+  gedgraph hourglass family.ged @I10@ -v descendants -o hourglass.dot
+  gedgraph hourglass family.ged @I10@ -v descendants -g 3 -o hourglass.dot
+
+  # Generate bowtie chart - father left, mother right (horizontal)
+  gedgraph bowtie family.ged @I10@ -v ancestor-split -o bowtie.dot
+
+  # Generate bowtie chart - ancestors left, descendants right (horizontal)
+  gedgraph bowtie family.ged @I10@ -v descendants -o bowtie.dot
+
+  # Render DOT files to images (requires GraphViz installed)
+  dot -Tpng output.dot -o output.png
+  dot -Tsvg output.dot -o output.svg
         """,
     )
 
@@ -56,6 +72,42 @@ Examples:
         type=int,
         default=50,
         help="Maximum search depth (default: 50)",
+    )
+
+    hourglass_parser = subparsers.add_parser(
+        "hourglass", help="Generate hourglass chart (ancestors and descendants)"
+    )
+    hourglass_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
+    hourglass_parser.add_argument("individual", type=str, help="Center individual ID (e.g., @I10@)")
+    hourglass_parser.add_argument(
+        "-g", "--generations", type=int, default=4,
+        help="Number of generations in each direction (default: 4)"
+    )
+    hourglass_parser.add_argument(
+        "-v", "--variant", choices=["ancestor-split", "descendants"],
+        default="ancestor-split",
+        help="Chart variant: ancestor-split (father above, mother below) or descendants (ancestors above, descendants below)"
+    )
+    hourglass_parser.add_argument(
+        "-o", "--output", type=str, required=True, help="Output DOT file path"
+    )
+
+    bowtie_parser = subparsers.add_parser(
+        "bowtie", help="Generate bowtie chart (horizontal hourglass)"
+    )
+    bowtie_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
+    bowtie_parser.add_argument("individual", type=str, help="Center individual ID (e.g., @I10@)")
+    bowtie_parser.add_argument(
+        "-g", "--generations", type=int, default=4,
+        help="Number of generations in each direction (default: 4)"
+    )
+    bowtie_parser.add_argument(
+        "-v", "--variant", choices=["ancestor-split", "descendants"],
+        default="ancestor-split",
+        help="Chart variant: ancestor-split (father left, mother right) or descendants (ancestors left, descendants right)"
+    )
+    bowtie_parser.add_argument(
+        "-o", "--output", type=str, required=True, help="Output DOT file path"
     )
 
     args = parser.parse_args()
@@ -145,6 +197,50 @@ Examples:
 
             if len(paths) > 1:
                 print(f"Note: {len(paths)} equally short paths found, showing first")
+
+        elif args.command == "hourglass":
+            individual = gedcom_parser.get_individual(args.individual)
+            if not individual:
+                print(
+                    f"Error: Individual {args.individual} not found in GEDCOM file",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            dot_gen = DotGenerator(gedcom_parser)
+            dot_content = dot_gen.generate_hourglass(
+                args.individual, args.generations, args.variant
+            )
+
+            with open(args.output, "w") as f:
+                f.write(dot_content)
+
+            print(f"Hourglass chart generated: {args.output}")
+            print(f"Individual: {gedcom_parser.get_name(individual)} ({args.individual})")
+            print(f"Generations: {args.generations}")
+            print(f"Variant: {args.variant}")
+
+        elif args.command == "bowtie":
+            individual = gedcom_parser.get_individual(args.individual)
+            if not individual:
+                print(
+                    f"Error: Individual {args.individual} not found in GEDCOM file",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+
+            dot_gen = DotGenerator(gedcom_parser)
+            dot_content = dot_gen.generate_bowtie(
+                args.individual, args.generations, args.variant
+            )
+
+            with open(args.output, "w") as f:
+                f.write(dot_content)
+
+            print(f"Bowtie chart generated: {args.output}")
+            print(f"Individual: {gedcom_parser.get_name(individual)} ({args.individual})")
+            print(f"Generations: {args.generations}")
+            print(f"Variant: {args.variant}")
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
