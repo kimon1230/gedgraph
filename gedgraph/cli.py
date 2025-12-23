@@ -1,45 +1,24 @@
-"""Command-line interface for GedGraph."""
-
 import argparse
 import sys
 from pathlib import Path
-
 from .dotgen import DotGenerator
 from .parser import GedcomParser
 from .pathfinder import PathFinder
 
 
 def main():
-    """Main CLI entry point."""
     parser = argparse.ArgumentParser(
         description="Generate genealogical charts from GEDCOM files",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Generate pedigree chart (ancestors only, top-to-bottom)
   gedgraph pedigree family.ged @I10@ -o pedigree.dot
-  gedgraph pedigree family.ged @I10@ -g 5 -o pedigree.dot
-
-  # Generate relationship chart between two individuals
-  gedgraph relationship family.ged @I10@ @I20@ -o relationship.dot
-  gedgraph relationship family.ged @I10@ @I20@ -d 30 -o relationship.dot
-
-  # Generate hourglass chart - father above, mother below
-  gedgraph hourglass family.ged @I10@ -v ancestor-split -o hourglass.dot
-
-  # Generate hourglass chart - ancestors above, descendants below
+  gedgraph relationship family.ged @I10@ @I20@ -o rel.dot
   gedgraph hourglass family.ged @I10@ -v descendants -o hourglass.dot
-  gedgraph hourglass family.ged @I10@ -v descendants -g 3 -o hourglass.dot
-
-  # Generate bowtie chart - father left, mother right (horizontal)
   gedgraph bowtie family.ged @I10@ -v ancestor-split -o bowtie.dot
 
-  # Generate bowtie chart - ancestors left, descendants right (horizontal)
-  gedgraph bowtie family.ged @I10@ -v descendants -o bowtie.dot
-
-  # Render DOT files to images (requires GraphViz installed)
+  # Render with GraphViz
   dot -Tpng output.dot -o output.png
-  dot -Tsvg output.dot -o output.svg
         """,
     )
 
@@ -122,129 +101,58 @@ Examples:
         sys.exit(1)
 
     try:
-        gedcom_parser = GedcomParser(str(gedcom_path))
-        gedcom_parser.load()
+        gp = GedcomParser(str(gedcom_path))
+        gp.load()
+        gen = DotGenerator(gp)
 
         if args.command == "pedigree":
-            individual = gedcom_parser.get_individual(args.individual)
-            if not individual:
-                print(
-                    f"Error: Individual {args.individual} not found in GEDCOM file",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+            ind = gp.get_individual(args.individual)
+            if not ind:
+                sys.exit(f"Error: Individual {args.individual} not found")
 
-            dot_gen = DotGenerator(gedcom_parser)
-            dot_content = dot_gen.generate_pedigree(args.individual, args.generations)
-
-            with open(args.output, "w") as f:
-                f.write(dot_content)
-
-            print(f"Pedigree chart generated: {args.output}")
-            print(f"Individual: {gedcom_parser.get_name(individual)} ({args.individual})")
-            print(f"Generations: {args.generations}")
+            dot = gen.generate_pedigree(args.individual, args.generations)
+            Path(args.output).write_text(dot)
+            print(f"Pedigree: {gp.get_name(ind)} - {args.generations} gen -> {args.output}")
 
         elif args.command == "relationship":
-            individual1 = gedcom_parser.get_individual(args.individual1)
-            individual2 = gedcom_parser.get_individual(args.individual2)
+            ind1 = gp.get_individual(args.individual1)
+            ind2 = gp.get_individual(args.individual2)
 
-            if not individual1:
-                print(
-                    f"Error: Individual {args.individual1} not found in GEDCOM file",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+            if not ind1:
+                sys.exit(f"Error: Individual {args.individual1} not found")
+            if not ind2:
+                sys.exit(f"Error: Individual {args.individual2} not found")
 
-            if not individual2:
-                print(
-                    f"Error: Individual {args.individual2} not found in GEDCOM file",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-
-            pathfinder = PathFinder(gedcom_parser)
-            paths = pathfinder.get_shortest_paths(
-                args.individual1, args.individual2, args.max_depth
-            )
+            pf = PathFinder(gp)
+            paths = pf.get_shortest_paths(args.individual1, args.individual2, args.max_depth)
 
             if not paths:
-                print(
-                    f"Error: No relationship found between {args.individual1} "
-                    f"and {args.individual2}",
-                    file=sys.stderr,
-                )
-                print(
-                    f"  {gedcom_parser.get_name(individual1)} ({args.individual1})",
-                    file=sys.stderr,
-                )
-                print(
-                    f"  {gedcom_parser.get_name(individual2)} ({args.individual2})",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+                sys.exit(f"Error: No relationship found between {args.individual1} and {args.individual2}")
 
-            dot_gen = DotGenerator(gedcom_parser)
-            dot_content = dot_gen.generate_relationship(paths)
-
-            with open(args.output, "w") as f:
-                f.write(dot_content)
-
-            print(f"Relationship chart generated: {args.output}")
-            print(f"From: {gedcom_parser.get_name(individual1)} ({args.individual1})")
-            print(f"To: {gedcom_parser.get_name(individual2)} ({args.individual2})")
-            print(f"Path length: {paths[0].length()} steps")
-            print(f"Generation distance: {paths[0].generation_distance()}")
-
-            if len(paths) > 1:
-                print(f"Note: {len(paths)} equally short paths found, showing first")
+            dot = gen.generate_relationship(paths)
+            Path(args.output).write_text(dot)
+            print(f"Relationship: {gp.get_name(ind1)} to {gp.get_name(ind2)} ({paths[0].length()} steps) -> {args.output}")
 
         elif args.command == "hourglass":
-            individual = gedcom_parser.get_individual(args.individual)
-            if not individual:
-                print(
-                    f"Error: Individual {args.individual} not found in GEDCOM file",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+            ind = gp.get_individual(args.individual)
+            if not ind:
+                sys.exit(f"Error: Individual {args.individual} not found")
 
-            dot_gen = DotGenerator(gedcom_parser)
-            dot_content = dot_gen.generate_hourglass(
-                args.individual, args.generations, args.variant
-            )
-
-            with open(args.output, "w") as f:
-                f.write(dot_content)
-
-            print(f"Hourglass chart generated: {args.output}")
-            print(f"Individual: {gedcom_parser.get_name(individual)} ({args.individual})")
-            print(f"Generations: {args.generations}")
-            print(f"Variant: {args.variant}")
+            dot = gen.generate_hourglass(args.individual, args.generations, args.variant)
+            Path(args.output).write_text(dot)
+            print(f"Hourglass: {gp.get_name(ind)} ({args.variant}) -> {args.output}")
 
         elif args.command == "bowtie":
-            individual = gedcom_parser.get_individual(args.individual)
-            if not individual:
-                print(
-                    f"Error: Individual {args.individual} not found in GEDCOM file",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
+            ind = gp.get_individual(args.individual)
+            if not ind:
+                sys.exit(f"Error: Individual {args.individual} not found")
 
-            dot_gen = DotGenerator(gedcom_parser)
-            dot_content = dot_gen.generate_bowtie(
-                args.individual, args.generations, args.variant
-            )
-
-            with open(args.output, "w") as f:
-                f.write(dot_content)
-
-            print(f"Bowtie chart generated: {args.output}")
-            print(f"Individual: {gedcom_parser.get_name(individual)} ({args.individual})")
-            print(f"Generations: {args.generations}")
-            print(f"Variant: {args.variant}")
+            dot = gen.generate_bowtie(args.individual, args.generations, args.variant)
+            Path(args.output).write_text(dot)
+            print(f"Bowtie: {gp.get_name(ind)} ({args.variant}) -> {args.output}")
 
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(f"Error: {e}")
 
 
 if __name__ == "__main__":

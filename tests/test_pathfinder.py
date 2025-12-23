@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from gedgraph.parser import GedcomParser
-from gedgraph.pathfinder import PathFinder, RelationType
+from gedgraph.pathfinder import PathFinder
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def test_find_direct_parent_child(pathfinder):
     assert len(paths) > 0
     shortest = paths[0]
     assert shortest.length() == 1
-    assert shortest.steps[0].relation_type == RelationType.CHILD
+    assert not shortest.steps[0].is_parent  # Going to child, not parent
 
 
 def test_find_grandparent_grandchild(pathfinder):

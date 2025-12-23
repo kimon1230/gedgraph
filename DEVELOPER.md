@@ -31,6 +31,7 @@ gedgraph/
 - `get_children(individual)`: Get all children
 - `get_spouse_for_child()`: Get spouse in context of specific child, with marriage status
 - `is_full_sibling()`, `is_half_sibling()`: Determine sibling relationships
+- `_extract_year()`: Extract year from GEDCOM event tag (used by birth/death methods)
 
 **Implementation Notes**:
 - Individuals and families are loaded at initialization and kept in memory
@@ -48,9 +49,7 @@ gedgraph/
 **Key Classes**:
 - `PathFinder`: BFS-based path finding
 - `RelationshipPath`: Represents a complete path with metadata
-- `PathStep`: Represents a single parent/child relationship
-- `RelationType`: Enum for PARENT/CHILD relationships
-- `BloodType`: Enum for FULL/HALF blood relationships
+- `PathStep`: Represents a single parent/child relationship with boolean flags
 
 **Algorithm**:
 - Uses breadth-first search (BFS) to find shortest paths
@@ -61,10 +60,10 @@ gedgraph/
 **Path Sorting**:
 Paths are sorted by a tuple key:
 1. Length (number of steps)
-2. Blood score (sum of blood types, FULL=1, HALF=2)
+2. Blood score (count of half-blood relationships)
 3. Male preference score (count of female-line steps)
 
-This ensures proper prioritization per requirements.
+This prioritizes: shorter paths, full blood over half blood, male line over female line.
 
 **Key Methods**:
 - `find_pedigree()`: BFS to find ancestors up to N generations
@@ -73,7 +72,9 @@ This ensures proper prioritization per requirements.
 - `find_descendants()`: Find descendants with generation tracking
 - `find_relationship_paths()`: BFS to find all paths between two individuals
 - `get_shortest_paths()`: Find and sort shortest paths
+- `_bfs_traverse()`: Generic BFS traversal used by all find methods
 - `_get_neighbors()`: Get all adjacent individuals in the graph
+- `_is_full_blood()`: Check if parent-child relationship is full blood
 
 ### dotgen.py - GraphViz Generation
 
@@ -87,8 +88,10 @@ This ensures proper prioritization per requirements.
 - `generate_hourglass()`: Create hourglass chart DOT file (vertical split)
 - `generate_bowtie()`: Create bowtie chart DOT file (horizontal split)
 - `generate_relationship()`: Create relationship chart DOT file with spouse nodes
-- `_format_individual_label()`: Format names with dates in (YYYY - YYYY) format
+- `_format_label()`: Format names with dates in (YYYY - YYYY) format
 - `_describe_relationship()`: Generate human-readable relationship description
+- `_build_generation_map()`: Build generation map for hourglass/bowtie charts
+- `_render_chart()`: Generic chart renderer for all chart types
 
 **Chart Types**:
 - **Pedigree**: Ancestors only, top-to-bottom layout
@@ -223,11 +226,11 @@ make audit
    - Verify DOT output contains expected elements
 4. Update README.md and DEVELOPER.md with usage examples
 
-**Example**: The hourglass and bowtie charts were added following this pattern:
-- They reuse PathFinder's `find_pedigree_with_generations()` and `find_descendants()`
-- They organize individuals into a generations_map with positive/negative generation numbers
-- They use rankdir=TB (hourglass) or rankdir=LR (bowtie) for different orientations
-- They support variants via a `variant` parameter
+**Example**: The hourglass and bowtie charts share common infrastructure:
+- Both use `_build_generation_map()` to organize individuals by generation
+- Both use `_render_chart()` for DOT generation
+- They differ only in rankdir: TB (hourglass) or LR (bowtie)
+- Both support `ancestor-split` and `descendants` variants
 
 ### Adding New Relationship Metrics
 

@@ -1,243 +1,108 @@
-"""Find relationship paths between individuals in a GEDCOM file."""
-
 from collections import deque
 from dataclasses import dataclass
-from enum import Enum
 from typing import List, Tuple
-
-
-class RelationType(Enum):
-    """Types of genealogical relationships."""
-
-    PARENT = "parent"
-    CHILD = "child"
-
-
-class BloodType(Enum):
-    """Blood relationship types for sorting paths."""
-
-    FULL = 1  # Full blood relationship
-    HALF = 2  # Half blood relationship
 
 
 @dataclass
 class PathStep:
-    """A single step in a relationship path."""
-
     individual_id: str
-    relation_type: RelationType
-    blood_type: BloodType
-    via_male: bool  # True if relationship is through male line
+    is_parent: bool  # True if going up (to parent), False if going down (to child)
+    is_full_blood: bool
+    via_male: bool
 
 
 @dataclass
 class RelationshipPath:
-    """A complete path between two individuals."""
-
     steps: List[PathStep]
     start_id: str
     end_id: str
 
     def length(self) -> int:
-        """Get the number of steps in the path."""
         return len(self.steps)
 
     def generation_distance(self) -> int:
-        """
-        Calculate generation distance.
-
-        Positive means end is descendant of start.
-        Negative means end is ancestor of start.
-        Zero means same generation (siblings, cousins, etc.)
-        """
+        """Positive = descendant, negative = ancestor, 0 = same generation."""
         distance = 0
         for step in self.steps:
-            if step.relation_type == RelationType.CHILD:
-                distance += 1
-            elif step.relation_type == RelationType.PARENT:
-                distance -= 1
+            distance += -1 if step.is_parent else 1
         return distance
 
     def sorting_key(self) -> Tuple:
-        """
-        Generate sorting key for path comparison.
-
-        Paths are sorted by:
-        1. Length (shorter is better)
-        2. Blood type (full blood preferred over half blood)
-        3. Male line preference
-        """
-        blood_score = sum(step.blood_type.value for step in self.steps)
+        """Sort by: length, full blood preference, male line preference."""
+        blood_score = sum(0 if step.is_full_blood else 1 for step in self.steps)
         male_score = sum(0 if step.via_male else 1 for step in self.steps)
         return (self.length(), blood_score, male_score)
 
 
 class PathFinder:
-    """Find relationship paths between individuals."""
-
     def __init__(self, parser):
-        """
-        Initialize PathFinder.
-
-        Args:
-            parser: GedcomParser instance
-        """
         self.parser = parser
 
+    def _bfs_traverse(self, individual_id: str, generations: int, get_relatives_fn):
+        """Generic BFS traversal - used for both ancestors and descendants."""
+        individual = self.parser.get_individual(individual_id)
+        if not individual:
+            return []
+
+        results = []
+        queue = deque([(individual, 0)])
+        visited = {individual.xref_id}
+
+        while queue:
+            current, gen = queue.popleft()
+            results.append((current, gen))
+
+            if gen < generations:
+                relatives = get_relatives_fn(current)
+                for relative in relatives:
+                    if relative and relative.xref_id not in visited:
+                        visited.add(relative.xref_id)
+                        queue.append((relative, gen + 1))
+
+        return results
+
     def find_pedigree(self, individual_id: str, generations: int = 4):
-        """
-        Generate pedigree (ancestors) for an individual.
+        results = self._bfs_traverse(
+            individual_id,
+            generations,
+            lambda ind: [p for p in self.parser.get_parents(ind) if p]
+        )
+        return [ind for ind, _ in results]
 
-        Args:
-            individual_id: ID of the individual
-            generations: Number of generations to include
-
-        Returns:
-            List of individuals in the pedigree
-        """
-        pedigree = []
-        individual = self.parser.get_individual(individual_id)
-        if not individual:
-            return pedigree
-
-        queue = deque([(individual, 0)])
-        visited = {individual.xref_id}
-
-        while queue:
-            current, gen = queue.popleft()
-            pedigree.append(current)
-
-            if gen < generations:
-                father, mother = self.parser.get_parents(current)
-                for parent in [father, mother]:
-                    if parent and parent.xref_id not in visited:
-                        visited.add(parent.xref_id)
-                        queue.append((parent, gen + 1))
-
-        return pedigree
-
-    def find_pedigree_with_generations(
-        self, individual_id: str, generations: int = 4
-    ) -> List[Tuple]:
-        """
-        Generate pedigree (ancestors) with generation tracking.
-
-        Args:
-            individual_id: ID of the individual
-            generations: Number of generations to include
-
-        Returns:
-            List of (individual, generation_number) tuples where
-            generation 0 = root, 1 = parents, 2 = grandparents, etc.
-        """
-        pedigree = []
-        individual = self.parser.get_individual(individual_id)
-        if not individual:
-            return pedigree
-
-        queue = deque([(individual, 0)])
-        visited = {individual.xref_id}
-
-        while queue:
-            current, gen = queue.popleft()
-            pedigree.append((current, gen))
-
-            if gen < generations:
-                father, mother = self.parser.get_parents(current)
-                for parent in [father, mother]:
-                    if parent and parent.xref_id not in visited:
-                        visited.add(parent.xref_id)
-                        queue.append((parent, gen + 1))
-
-        return pedigree
+    def find_pedigree_with_generations(self, individual_id: str, generations: int = 4) -> List[Tuple]:
+        return self._bfs_traverse(
+            individual_id,
+            generations,
+            lambda ind: [p for p in self.parser.get_parents(ind) if p]
+        )
 
     def find_descendants(self, individual_id: str, generations: int = 4) -> List[Tuple]:
-        """
-        Find descendants of an individual with generation tracking.
+        return self._bfs_traverse(
+            individual_id,
+            generations,
+            lambda ind: self.parser.get_children(ind)
+        )
 
-        Args:
-            individual_id: ID of the individual
-            generations: Number of generations to include
-
-        Returns:
-            List of (individual, generation_number) tuples where
-            generation 0 = root, 1 = children, 2 = grandchildren, etc.
-        """
-        descendants = []
-        individual = self.parser.get_individual(individual_id)
-        if not individual:
-            return descendants
-
-        queue = deque([(individual, 0)])
-        visited = {individual.xref_id}
-
-        while queue:
-            current, gen = queue.popleft()
-            descendants.append((current, gen))
-
-            if gen < generations:
-                children = self.parser.get_children(current)
-                for child in children:
-                    if child and child.xref_id not in visited:
-                        visited.add(child.xref_id)
-                        queue.append((child, gen + 1))
-
-        return descendants
-
-    def find_pedigree_split(
-        self, individual_id: str, generations: int = 4
-    ) -> Tuple[List[Tuple], List[Tuple]]:
-        """
-        Find paternal and maternal pedigrees separately.
-
-        Args:
-            individual_id: ID of the individual
-            generations: Number of generations to include
-
-        Returns:
-            Tuple of (paternal_ancestors, maternal_ancestors) where each is
-            a list of (individual, generation_number) tuples
-        """
+    def find_pedigree_split(self, individual_id: str, generations: int = 4) -> Tuple[List[Tuple], List[Tuple]]:
         individual = self.parser.get_individual(individual_id)
         if not individual:
             return ([], [])
 
         father, mother = self.parser.get_parents(individual)
 
-        paternal_ancestors = []
+        paternal = []
         if father:
-            # Get father's pedigree
-            father_pedigree = self.find_pedigree_with_generations(
-                father.xref_id, generations - 1
-            )
-            # Adjust generation numbers (add 1 since father is 1 generation up)
-            paternal_ancestors = [(ind, gen + 1) for ind, gen in father_pedigree]
+            paternal = [(ind, gen + 1) for ind, gen in
+                       self.find_pedigree_with_generations(father.xref_id, generations - 1)]
 
-        maternal_ancestors = []
+        maternal = []
         if mother:
-            # Get mother's pedigree
-            mother_pedigree = self.find_pedigree_with_generations(
-                mother.xref_id, generations - 1
-            )
-            # Adjust generation numbers (add 1 since mother is 1 generation up)
-            maternal_ancestors = [(ind, gen + 1) for ind, gen in mother_pedigree]
+            maternal = [(ind, gen + 1) for ind, gen in
+                       self.find_pedigree_with_generations(mother.xref_id, generations - 1)]
 
-        return (paternal_ancestors, maternal_ancestors)
+        return (paternal, maternal)
 
-    def find_relationship_paths(
-        self, start_id: str, end_id: str, max_depth: int = 50
-    ) -> List[RelationshipPath]:
-        """
-        Find all relationship paths between two individuals using BFS.
-
-        Args:
-            start_id: Starting individual ID
-            end_id: Ending individual ID
-            max_depth: Maximum search depth
-
-        Returns:
-            List of RelationshipPath objects, or empty list if no connection
-        """
+    def find_relationship_paths(self, start_id: str, end_id: str, max_depth: int = 50) -> List[RelationshipPath]:
         start = self.parser.get_individual(start_id)
         end = self.parser.get_individual(end_id)
 
@@ -254,156 +119,76 @@ class PathFinder:
 
         while queue:
             current, path = queue.popleft()
-            current_depth = len(path)
+            depth = len(path)
 
-            if min_length and current_depth > min_length:
+            if (min_length and depth > min_length) or depth >= max_depth:
                 continue
 
-            if current_depth >= max_depth:
-                continue
-
-            neighbors = self._get_neighbors(current)
-
-            for neighbor, step in neighbors:
+            for neighbor, step in self._get_neighbors(current):
                 if neighbor.xref_id == end.xref_id:
-                    new_path = RelationshipPath(
-                        steps=path + [step], start_id=start_id, end_id=end_id
-                    )
+                    new_path = RelationshipPath(steps=path + [step], start_id=start_id, end_id=end_id)
                     paths.append(new_path)
                     if min_length is None:
                         min_length = len(new_path.steps)
                     continue
 
-                if (
-                    neighbor.xref_id not in visited
-                    or visited[neighbor.xref_id] >= current_depth + 1
-                ):
-                    visited[neighbor.xref_id] = current_depth + 1
+                if neighbor.xref_id not in visited or visited[neighbor.xref_id] >= depth + 1:
+                    visited[neighbor.xref_id] = depth + 1
                     queue.append((neighbor, path + [step]))
 
         return paths
 
     def _get_neighbors(self, individual) -> List[Tuple]:
-        """
-        Get all neighboring individuals (parents and children) with relationship info.
-
-        Args:
-            individual: Individual record
-
-        Returns:
-            List of (neighbor_individual, PathStep) tuples
-        """
         neighbors = []
-
         father, mother = self.parser.get_parents(individual)
 
         if father:
-            neighbors.append(
-                (
-                    father,
-                    PathStep(
-                        individual_id=father.xref_id,
-                        relation_type=RelationType.PARENT,
-                        blood_type=BloodType.FULL,
-                        via_male=True,
-                    ),
-                )
-            )
+            neighbors.append((father, PathStep(
+                individual_id=father.xref_id,
+                is_parent=True,
+                is_full_blood=True,
+                via_male=True
+            )))
 
         if mother:
-            neighbors.append(
-                (
-                    mother,
-                    PathStep(
-                        individual_id=mother.xref_id,
-                        relation_type=RelationType.PARENT,
-                        blood_type=BloodType.FULL,
-                        via_male=False,
-                    ),
-                )
-            )
+            neighbors.append((mother, PathStep(
+                individual_id=mother.xref_id,
+                is_parent=True,
+                is_full_blood=True,
+                via_male=False
+            )))
 
-        children = self.parser.get_children(individual)
-        for child in children:
-            is_male = self.parser.get_sex(individual) == "M"
-            blood_type = self._determine_blood_type(individual, child)
-
-            neighbors.append(
-                (
-                    child,
-                    PathStep(
-                        individual_id=child.xref_id,
-                        relation_type=RelationType.CHILD,
-                        blood_type=blood_type,
-                        via_male=is_male,
-                    ),
-                )
-            )
+        is_male = self.parser.get_sex(individual) == "M"
+        for child in self.parser.get_children(individual):
+            neighbors.append((child, PathStep(
+                individual_id=child.xref_id,
+                is_parent=False,
+                is_full_blood=self._is_full_blood(individual, child),
+                via_male=is_male
+            )))
 
         return neighbors
 
-    def _determine_blood_type(self, parent, child) -> BloodType:
-        """
-        Determine if parent-child relationship is full or half blood.
-
-        Args:
-            parent: Parent individual
-            child: Child individual
-
-        Returns:
-            BloodType enum value
-        """
-        parent_families = self.parser.get_families_as_spouse(parent)
+    def _is_full_blood(self, parent, child) -> bool:
+        """Check if parent-child relationship is full blood (both parents in same family)."""
         child_father, child_mother = self.parser.get_parents(child)
-
         if not child_father or not child_mother:
-            return BloodType.HALF
+            return False
 
-        for family in parent_families:
+        for family in self.parser.get_families_as_spouse(parent):
             husb = family.sub_tag("HUSB")
             wife = family.sub_tag("WIFE")
-
             if husb and wife:
-                family_father_id = husb.xref_id
-                family_mother_id = wife.xref_id
+                if child_father.xref_id == husb.xref_id and child_mother.xref_id == wife.xref_id:
+                    return True
 
-                if (
-                    child_father.xref_id == family_father_id
-                    and child_mother.xref_id == family_mother_id
-                ):
-                    return BloodType.FULL
+        return False
 
-        return BloodType.HALF
-
-    def get_shortest_paths(
-        self, start_id: str, end_id: str, max_depth: int = 50
-    ) -> List[RelationshipPath]:
-        """
-        Find shortest relationship paths with proper sorting.
-
-        Returns paths sorted by:
-        1. Blood via male preference
-        2. Blood via female preference
-        3. Half blood via male preference
-        4. Half-blood via female preference
-
-        Args:
-            start_id: Starting individual ID
-            end_id: Ending individual ID
-            max_depth: Maximum search depth
-
-        Returns:
-            List of shortest RelationshipPath objects sorted by preference
-        """
+    def get_shortest_paths(self, start_id: str, end_id: str, max_depth: int = 50) -> List[RelationshipPath]:
         all_paths = self.find_relationship_paths(start_id, end_id, max_depth)
-
         if not all_paths:
             return []
 
         all_paths.sort(key=lambda p: p.sorting_key())
-
-        if not all_paths:
-            return []
-
-        shortest_length = all_paths[0].sorting_key()
-        return [p for p in all_paths if p.sorting_key() == shortest_length]
+        shortest_key = all_paths[0].sorting_key()
+        return [p for p in all_paths if p.sorting_key() == shortest_key]

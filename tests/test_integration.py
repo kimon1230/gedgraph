@@ -42,7 +42,7 @@ def test_cli_pedigree(sample_gedcom_path, python_cmd):
         )
 
         assert result.returncode == 0
-        assert "Pedigree chart generated" in result.stdout
+        assert "Pedigree:" in result.stdout
 
         with open(output_path) as f:
             content = f.read()
@@ -76,8 +76,8 @@ def test_cli_relationship(sample_gedcom_path, python_cmd):
         )
 
         assert result.returncode == 0
-        assert "Relationship chart generated" in result.stdout
-        assert "Path length: 3" in result.stdout
+        assert "Relationship:" in result.stdout
+        assert "3 steps" in result.stdout
 
         with open(output_path) as f:
             content = f.read()
@@ -183,7 +183,7 @@ def test_pedigree_generations(sample_gedcom_path, python_cmd):
         )
 
         assert result.returncode == 0
-        assert "Generations: 2" in result.stdout
+        assert "2 gen" in result.stdout
 
     finally:
         Path(output_path).unlink(missing_ok=True)

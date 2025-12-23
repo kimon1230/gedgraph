@@ -72,9 +72,9 @@ def test_dot_includes_comments(dotgen, pathfinder):
     """Test that relationship DOT includes comments."""
     paths = pathfinder.get_shortest_paths("@I1@", "@I7@")
     dot = dotgen.generate_relationship(paths)
-    assert "Generation distance:" in dot
-    assert "Path length:" in dot
-    assert "Relationship:" in dot
+    assert "John Smith to David Smith" in dot
+    assert "3 steps" in dot
+    assert "Direct ancestor" in dot
 
 
 def test_escape_id(dotgen):
@@ -86,7 +86,7 @@ def test_escape_id(dotgen):
 def test_format_individual_label(dotgen, parser):
     """Test individual label formatting."""
     individual = parser.get_individual("@I1@")
-    label = dotgen._format_individual_label(individual)
+    label = dotgen._format_label(individual)
     assert "John Smith" in label
     assert "1900" in label
     assert "1980" in label
