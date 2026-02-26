@@ -1,4 +1,4 @@
-.PHONY: venv install test lint fmt audit clean
+.PHONY: venv install test lint fmt audit build clean distclean
 
 venv:
 	python -m venv .venv
@@ -6,7 +6,7 @@ venv:
 
 install:
 	.venv/bin/pip install --upgrade pip
-	.venv/bin/pip install -r requirements.txt
+	.venv/bin/pip install -e ".[dev]"
 
 test:
 	.venv/bin/pytest tests/ -v
@@ -21,7 +21,13 @@ fmt:
 audit:
 	.venv/bin/pip-audit
 
+build:
+	.venv/bin/python -m build
+
 clean:
+	rm -rf dist build *.egg-info
+	find . -path ./.venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
+	find . -path ./.venv -prune -o -type f -name '*.pyc' -delete
+
+distclean: clean
 	rm -rf .venv
-	find . -type d -name __pycache__ -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete

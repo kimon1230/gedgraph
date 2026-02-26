@@ -1,10 +1,62 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gedgraph"
+dynamic = ["version"]
+description = "Generate genealogical charts from GEDCOM files"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    {name = "Kimon Andreou"},
+]
+keywords = ["genealogy", "gedcom", "graphviz", "pedigree", "family-tree"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Sociology :: Genealogy",
+]
+dependencies = [
+    "ged4py>=0.4.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "black>=24.10.0",
+    "ruff>=0.1.0",
+    "pip-audit>=2.6.0",
+    "build>=1.0.0",
+]
+
+[project.scripts]
+gedgraph = "gedgraph.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/kimon-andreou/gedgraph"
+Repository = "https://github.com/kimon-andreou/gedgraph"
+
+[tool.setuptools.dynamic]
+version = {attr = "gedgraph.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*"]
+
 [tool.black]
 line-length = 100
-target-version = ['py38', 'py39', 'py310', 'py311']
+target-version = ['py310', 'py311', 'py312', 'py313']
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "DTZ", "T10", "ISC", "ICN", "PIE", "PT", "RET", "SIM", "ARG", "PTH", "PD", "PL", "NPY", "RUF"]

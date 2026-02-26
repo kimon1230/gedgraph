@@ -17,15 +17,26 @@ Generate genealogical charts from GEDCOM files using GraphViz.
 - **Enhanced Name Formatting**: Supports GEDCOM name components (prefix, title, given, surname, suffix)
 - **GraphViz Output**: Generates DOT files that can be rendered to various image formats
 
+## Prerequisites
+
+- Python 3.10+
+- [GraphViz](https://graphviz.org/) (`dot` command) installed on your system to render DOT files to images
+
 ## Installation
+
+```bash
+pip install gedgraph
+```
+
+### Development Setup
 
 ```bash
 # Create and activate virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install in editable mode with dev dependencies
+pip install -e ".[dev]"
 ```
 
 ## Usage
@@ -35,7 +46,7 @@ pip install -r requirements.txt
 Generate a pedigree chart showing ancestors of an individual:
 
 ```bash
-python gedgraph.py pedigree family.ged @I10@ -o output.dot
+gedgraph pedigree family.ged @I10@ -o output.dot
 ```
 
 Options:
@@ -43,7 +54,7 @@ Options:
 
 Example:
 ```bash
-python gedgraph.py pedigree family.ged @I10@ -g 5 -o pedigree.dot
+gedgraph pedigree family.ged @I10@ -g 5 -o pedigree.dot
 ```
 
 ### Relationship Chart
@@ -51,7 +62,7 @@ python gedgraph.py pedigree family.ged @I10@ -g 5 -o pedigree.dot
 Find and visualize the relationship between two individuals:
 
 ```bash
-python gedgraph.py relationship family.ged @I10@ @I20@ -o output.dot
+gedgraph relationship family.ged @I10@ @I20@ -o output.dot
 ```
 
 Options:
@@ -59,7 +70,7 @@ Options:
 
 Example:
 ```bash
-python gedgraph.py relationship family.ged @I1@ @I50@ -d 15 -o relationship.dot
+gedgraph relationship family.ged @I1@ @I50@ -d 15 -o relationship.dot
 ```
 
 ### Hourglass Chart
@@ -68,10 +79,10 @@ Visualize ancestors and descendants or split by parental lines:
 
 ```bash
 # Ancestors above, descendants below
-python gedgraph.py hourglass family.ged @I10@ -v descendants -o hourglass.dot
+gedgraph hourglass family.ged @I10@ -v descendants -o hourglass.dot
 
 # Father's line above, mother's line below
-python gedgraph.py hourglass family.ged @I10@ -v ancestor-split -o hourglass.dot
+gedgraph hourglass family.ged @I10@ -v ancestor-split -o hourglass.dot
 ```
 
 Options:
@@ -84,10 +95,10 @@ Horizontal hourglass layout with left-right orientation:
 
 ```bash
 # Ancestors left, descendants right
-python gedgraph.py bowtie family.ged @I10@ -v descendants -o bowtie.dot
+gedgraph bowtie family.ged @I10@ -v descendants -o bowtie.dot
 
 # Father's line left, mother's line right
-python gedgraph.py bowtie family.ged @I10@ -v ancestor-split -o bowtie.dot
+gedgraph bowtie family.ged @I10@ -v ancestor-split -o bowtie.dot
 ```
 
 Options:

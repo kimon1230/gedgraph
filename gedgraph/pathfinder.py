@@ -1,6 +1,5 @@
 from collections import deque
 from dataclasses import dataclass
-from typing import List, Tuple
 
 
 @dataclass
@@ -13,7 +12,7 @@ class PathStep:
 
 @dataclass
 class RelationshipPath:
-    steps: List[PathStep]
+    steps: list[PathStep]
     start_id: str
     end_id: str
 
@@ -27,7 +26,7 @@ class RelationshipPath:
             distance += -1 if step.is_parent else 1
         return distance
 
-    def sorting_key(self) -> Tuple:
+    def sorting_key(self) -> tuple:
         """Sort by: length, full blood preference, male line preference."""
         blood_score = sum(0 if step.is_full_blood else 1 for step in self.steps)
         male_score = sum(0 if step.via_male else 1 for step in self.steps)
@@ -63,27 +62,23 @@ class PathFinder:
 
     def find_pedigree(self, individual_id: str, generations: int = 4):
         results = self._bfs_traverse(
-            individual_id,
-            generations,
-            lambda ind: [p for p in self.parser.get_parents(ind) if p]
+            individual_id, generations, lambda ind: [p for p in self.parser.get_parents(ind) if p]
         )
         return [ind for ind, _ in results]
 
-    def find_pedigree_with_generations(self, individual_id: str, generations: int = 4) -> List[Tuple]:
+    def find_pedigree_with_generations(
+        self, individual_id: str, generations: int = 4
+    ) -> list[tuple]:
         return self._bfs_traverse(
-            individual_id,
-            generations,
-            lambda ind: [p for p in self.parser.get_parents(ind) if p]
+            individual_id, generations, lambda ind: [p for p in self.parser.get_parents(ind) if p]
         )
 
-    def find_descendants(self, individual_id: str, generations: int = 4) -> List[Tuple]:
-        return self._bfs_traverse(
-            individual_id,
-            generations,
-            lambda ind: self.parser.get_children(ind)
-        )
+    def find_descendants(self, individual_id: str, generations: int = 4) -> list[tuple]:
+        return self._bfs_traverse(individual_id, generations, self.parser.get_children)
 
-    def find_pedigree_split(self, individual_id: str, generations: int = 4) -> Tuple[List[Tuple], List[Tuple]]:
+    def find_pedigree_split(
+        self, individual_id: str, generations: int = 4
+    ) -> tuple[list[tuple], list[tuple]]:
         individual = self.parser.get_individual(individual_id)
         if not individual:
             return ([], [])
@@ -92,17 +87,23 @@ class PathFinder:
 
         paternal = []
         if father:
-            paternal = [(ind, gen + 1) for ind, gen in
-                       self.find_pedigree_with_generations(father.xref_id, generations - 1)]
+            paternal = [
+                (ind, gen + 1)
+                for ind, gen in self.find_pedigree_with_generations(father.xref_id, generations - 1)
+            ]
 
         maternal = []
         if mother:
-            maternal = [(ind, gen + 1) for ind, gen in
-                       self.find_pedigree_with_generations(mother.xref_id, generations - 1)]
+            maternal = [
+                (ind, gen + 1)
+                for ind, gen in self.find_pedigree_with_generations(mother.xref_id, generations - 1)
+            ]
 
         return (paternal, maternal)
 
-    def find_relationship_paths(self, start_id: str, end_id: str, max_depth: int = 50) -> List[RelationshipPath]:
+    def find_relationship_paths(
+        self, start_id: str, end_id: str, max_depth: int = 50
+    ) -> list[RelationshipPath]:
         start = self.parser.get_individual(start_id)
         end = self.parser.get_individual(end_id)
 
@@ -126,7 +127,9 @@ class PathFinder:
 
             for neighbor, step in self._get_neighbors(current):
                 if neighbor.xref_id == end.xref_id:
-                    new_path = RelationshipPath(steps=path + [step], start_id=start_id, end_id=end_id)
+                    new_path = RelationshipPath(
+                        steps=path + [step], start_id=start_id, end_id=end_id
+                    )
                     paths.append(new_path)
                     if min_length is None:
                         min_length = len(new_path.steps)
@@ -138,34 +141,49 @@ class PathFinder:
 
         return paths
 
-    def _get_neighbors(self, individual) -> List[Tuple]:
+    def _get_neighbors(self, individual) -> list[tuple]:
         neighbors = []
         father, mother = self.parser.get_parents(individual)
 
         if father:
-            neighbors.append((father, PathStep(
-                individual_id=father.xref_id,
-                is_parent=True,
-                is_full_blood=True,
-                via_male=True
-            )))
+            neighbors.append(
+                (
+                    father,
+                    PathStep(
+                        individual_id=father.xref_id,
+                        is_parent=True,
+                        is_full_blood=True,
+                        via_male=True,
+                    ),
+                )
+            )
 
         if mother:
-            neighbors.append((mother, PathStep(
-                individual_id=mother.xref_id,
-                is_parent=True,
-                is_full_blood=True,
-                via_male=False
-            )))
+            neighbors.append(
+                (
+                    mother,
+                    PathStep(
+                        individual_id=mother.xref_id,
+                        is_parent=True,
+                        is_full_blood=True,
+                        via_male=False,
+                    ),
+                )
+            )
 
         is_male = self.parser.get_sex(individual) == "M"
         for child in self.parser.get_children(individual):
-            neighbors.append((child, PathStep(
-                individual_id=child.xref_id,
-                is_parent=False,
-                is_full_blood=self._is_full_blood(individual, child),
-                via_male=is_male
-            )))
+            neighbors.append(
+                (
+                    child,
+                    PathStep(
+                        individual_id=child.xref_id,
+                        is_parent=False,
+                        is_full_blood=self._is_full_blood(individual, child),
+                        via_male=is_male,
+                    ),
+                )
+            )
 
         return neighbors
 
@@ -178,13 +196,19 @@ class PathFinder:
         for family in self.parser.get_families_as_spouse(parent):
             husb = family.sub_tag("HUSB")
             wife = family.sub_tag("WIFE")
-            if husb and wife:
-                if child_father.xref_id == husb.xref_id and child_mother.xref_id == wife.xref_id:
-                    return True
+            if (
+                husb
+                and wife
+                and child_father.xref_id == husb.xref_id
+                and child_mother.xref_id == wife.xref_id
+            ):
+                return True
 
         return False
 
-    def get_shortest_paths(self, start_id: str, end_id: str, max_depth: int = 50) -> List[RelationshipPath]:
+    def get_shortest_paths(
+        self, start_id: str, end_id: str, max_depth: int = 50
+    ) -> list[RelationshipPath]:
         all_paths = self.find_relationship_paths(start_id, end_id, max_depth)
         if not all_paths:
             return []

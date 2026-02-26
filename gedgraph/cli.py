@@ -1,6 +1,7 @@
 import argparse
 import sys
 from pathlib import Path
+
 from .dotgen import DotGenerator
 from .parser import GedcomParser
 from .pathfinder import PathFinder
@@ -59,13 +60,19 @@ Examples:
     hourglass_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
     hourglass_parser.add_argument("individual", type=str, help="Center individual ID (e.g., @I10@)")
     hourglass_parser.add_argument(
-        "-g", "--generations", type=int, default=4,
-        help="Number of generations in each direction (default: 4)"
+        "-g",
+        "--generations",
+        type=int,
+        default=4,
+        help="Number of generations in each direction (default: 4)",
     )
     hourglass_parser.add_argument(
-        "-v", "--variant", choices=["ancestor-split", "descendants"],
+        "-v",
+        "--variant",
+        choices=["ancestor-split", "descendants"],
         default="ancestor-split",
-        help="Chart variant: ancestor-split (father above, mother below) or descendants (ancestors above, descendants below)"
+        help="Chart variant: ancestor-split (father above, mother below) "
+        "or descendants (ancestors above, descendants below)",
     )
     hourglass_parser.add_argument(
         "-o", "--output", type=str, required=True, help="Output DOT file path"
@@ -77,13 +84,19 @@ Examples:
     bowtie_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
     bowtie_parser.add_argument("individual", type=str, help="Center individual ID (e.g., @I10@)")
     bowtie_parser.add_argument(
-        "-g", "--generations", type=int, default=4,
-        help="Number of generations in each direction (default: 4)"
+        "-g",
+        "--generations",
+        type=int,
+        default=4,
+        help="Number of generations in each direction (default: 4)",
     )
     bowtie_parser.add_argument(
-        "-v", "--variant", choices=["ancestor-split", "descendants"],
+        "-v",
+        "--variant",
+        choices=["ancestor-split", "descendants"],
         default="ancestor-split",
-        help="Chart variant: ancestor-split (father left, mother right) or descendants (ancestors left, descendants right)"
+        help="Chart variant: ancestor-split (father left, mother right) "
+        "or descendants (ancestors left, descendants right)",
     )
     bowtie_parser.add_argument(
         "-o", "--output", type=str, required=True, help="Output DOT file path"
@@ -127,11 +140,15 @@ Examples:
             paths = pf.get_shortest_paths(args.individual1, args.individual2, args.max_depth)
 
             if not paths:
-                sys.exit(f"Error: No relationship found between {args.individual1} and {args.individual2}")
+                id1, id2 = args.individual1, args.individual2
+                sys.exit(f"Error: No relationship found between {id1} and {id2}")
 
             dot = gen.generate_relationship(paths)
             Path(args.output).write_text(dot)
-            print(f"Relationship: {gp.get_name(ind1)} to {gp.get_name(ind2)} ({paths[0].length()} steps) -> {args.output}")
+            name1 = gp.get_name(ind1)
+            name2 = gp.get_name(ind2)
+            steps = paths[0].length()
+            print(f"Relationship: {name1} to {name2} ({steps} steps) -> {args.output}")
 
         elif args.command == "hourglass":
             ind = gp.get_individual(args.individual)

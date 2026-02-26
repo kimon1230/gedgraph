@@ -1,4 +1,3 @@
-from typing import Optional
 from ged4py import GedcomReader
 
 
@@ -75,13 +74,13 @@ class GedcomParser:
             return parts[-1] if parts else None
         return None
 
-    def get_birth_year(self, individual) -> Optional[str]:
+    def get_birth_year(self, individual) -> str | None:
         year = self._extract_year(individual.sub_tag("BIRT"))
         if not year:
             year = self._extract_year(individual.sub_tag("BAPM") or individual.sub_tag("CHR"))
         return year
 
-    def get_death_year(self, individual) -> Optional[str]:
+    def get_death_year(self, individual) -> str | None:
         year = self._extract_year(individual.sub_tag("DEAT"))
         if not year:
             year = self._extract_year(individual.sub_tag("BURI"))
@@ -128,7 +127,7 @@ class GedcomParser:
     def _get_family(self, xref_id: str):
         return self._families.get(xref_id)
 
-    def get_sex(self, individual) -> Optional[str]:
+    def get_sex(self, individual) -> str | None:
         sex = individual.sub_tag("SEX")
         return str(sex.value) if sex and sex.value else None
 
@@ -171,9 +170,14 @@ class GedcomParser:
             husb = family.sub_tag("HUSB")
             wife = family.sub_tag("WIFE")
 
-            if husb and wife:
-                if (husb.xref_id == ind1.xref_id and wife.xref_id == ind2.xref_id) or \
-                   (husb.xref_id == ind2.xref_id and wife.xref_id == ind1.xref_id):
-                    return family.sub_tag("MARR") is not None
+            if (
+                husb
+                and wife
+                and (
+                    (husb.xref_id == ind1.xref_id and wife.xref_id == ind2.xref_id)
+                    or (husb.xref_id == ind2.xref_id and wife.xref_id == ind1.xref_id)
+                )
+            ):
+                return family.sub_tag("MARR") is not None
 
         return False

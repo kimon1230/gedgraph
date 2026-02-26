@@ -1,4 +1,3 @@
-from typing import List, Dict
 from .pathfinder import PathFinder, RelationshipPath
 
 
@@ -66,11 +65,17 @@ class DotGenerator:
             gen_map[0] = [individual]
 
             if father:
-                for ind, gen in pathfinder.find_pedigree_with_generations(father.xref_id, generations - 1):
+                father_gens = pathfinder.find_pedigree_with_generations(
+                    father.xref_id, generations - 1
+                )
+                for ind, gen in father_gens:
                     gen_map.setdefault(gen + 1, []).append(ind)
 
             if mother:
-                for ind, gen in pathfinder.find_pedigree_with_generations(mother.xref_id, generations - 1):
+                mother_gens = pathfinder.find_pedigree_with_generations(
+                    mother.xref_id, generations - 1
+                )
+                for ind, gen in mother_gens:
                     gen_map.setdefault(-(gen + 1), []).append(ind)
 
         elif variant == "descendants":
@@ -123,7 +128,9 @@ class DotGenerator:
         lines.append("}")
         return "\n".join(lines)
 
-    def generate_hourglass(self, individual_id: str, generations: int = 4, variant: str = "ancestor-split") -> str:
+    def generate_hourglass(
+        self, individual_id: str, generations: int = 4, variant: str = "ancestor-split"
+    ) -> str:
         individual = self.parser.get_individual(individual_id)
         if not individual:
             raise ValueError(f"Individual {individual_id} not found")
@@ -131,7 +138,9 @@ class DotGenerator:
         gen_map = self._build_generation_map(individual_id, generations, variant)
         return self._render_chart("Hourglass", individual, gen_map, "TB")
 
-    def generate_bowtie(self, individual_id: str, generations: int = 4, variant: str = "ancestor-split") -> str:
+    def generate_bowtie(
+        self, individual_id: str, generations: int = 4, variant: str = "ancestor-split"
+    ) -> str:
         individual = self.parser.get_individual(individual_id)
         if not individual:
             raise ValueError(f"Individual {individual_id} not found")
@@ -144,7 +153,7 @@ class DotGenerator:
 
         return self._render_chart("Bowtie", individual, gen_map, "LR")
 
-    def generate_relationship(self, paths: List[RelationshipPath]) -> str:
+    def generate_relationship(self, paths: list[RelationshipPath]) -> str:
         if not paths:
             raise ValueError("No paths provided")
 
@@ -170,9 +179,9 @@ class DotGenerator:
         spouse_map = {}
         for i in range(len(all_ids) - 1):
             curr = self.parser.get_individual(all_ids[i])
-            next = self.parser.get_individual(all_ids[i + 1])
-            if curr and next:
-                spouse, married = self.parser.get_spouse_for_child(next, curr)
+            nxt = self.parser.get_individual(all_ids[i + 1])
+            if curr and nxt:
+                spouse, married = self.parser.get_spouse_for_child(nxt, curr)
                 if spouse and spouse.xref_id not in all_ids:
                     spouse_map[all_ids[i + 1]] = (spouse, married)
 
@@ -203,7 +212,9 @@ class DotGenerator:
         # Draw spouse edges
         for ind_id, (spouse, married) in spouse_map.items():
             style = "solid" if married else "dashed"
-            lines.append(f"  {self._escape_id(ind_id)} -> {self._escape_id(spouse.xref_id)} [dir=none, style={style}, constraint=false];")
+            src = self._escape_id(ind_id)
+            dst = self._escape_id(spouse.xref_id)
+            lines.append(f"  {src} -> {dst} [dir=none, style={style}, constraint=false];")
 
         lines.append("")
 

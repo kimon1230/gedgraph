@@ -6,7 +6,8 @@ GedGraph is structured as a modular Python application with clear separation of 
 
 ```
 gedgraph/
-├── __init__.py       # Package metadata
+├── __init__.py       # Package metadata and version
+├── __main__.py       # Entry point for `python -m gedgraph`
 ├── parser.py         # GEDCOM file parsing and queries
 ├── pathfinder.py     # Relationship path finding algorithms
 ├── dotgen.py         # GraphViz DOT file generation
@@ -143,11 +144,8 @@ This prioritizes: shorter paths, full blood over half blood, male line over fema
 python -m venv .venv
 source .venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Install in development mode
-pip install -e .
+# Install in editable mode with dev dependencies
+pip install -e ".[dev]"
 ```
 
 ## Testing
@@ -264,7 +262,5 @@ For very large GEDCOM files (>100K individuals), consider:
 
 ## Dependencies
 
-- **ged4py**: GEDCOM parsing library
-- **graphviz**: Python bindings for GraphViz (optional for rendering)
-
-The program only requires ged4py; graphviz package is optional and only needed if rendering DOT files programmatically.
+- **ged4py**: GEDCOM parsing library (runtime dependency)
+- **GraphViz**: System tool (`dot` command) for rendering DOT files to images — not a Python package dependency, must be installed separately via your OS package manager

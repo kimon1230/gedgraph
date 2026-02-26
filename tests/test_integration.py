@@ -1,5 +1,6 @@
 """Integration tests for GedGraph."""
 
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -29,7 +30,8 @@ def test_cli_pedigree(sample_gedcom_path, python_cmd):
         result = subprocess.run(
             [
                 python_cmd,
-                "gedgraph.py",
+                "-m",
+                "gedgraph",
                 "pedigree",
                 str(sample_gedcom_path),
                 "@I7@",
@@ -62,7 +64,8 @@ def test_cli_relationship(sample_gedcom_path, python_cmd):
         result = subprocess.run(
             [
                 python_cmd,
-                "gedgraph.py",
+                "-m",
+                "gedgraph",
                 "relationship",
                 str(sample_gedcom_path),
                 "@I1@",
@@ -98,7 +101,8 @@ def test_cli_no_relationship(sample_gedcom_path, python_cmd):
         result = subprocess.run(
             [
                 python_cmd,
-                "gedgraph.py",
+                "-m",
+                "gedgraph",
                 "relationship",
                 str(sample_gedcom_path),
                 "@I1@",
@@ -127,7 +131,8 @@ def test_cli_invalid_individual(sample_gedcom_path, python_cmd):
         result = subprocess.run(
             [
                 python_cmd,
-                "gedgraph.py",
+                "-m",
+                "gedgraph",
                 "pedigree",
                 str(sample_gedcom_path),
                 "@I999@",
@@ -148,15 +153,21 @@ def test_cli_invalid_individual(sample_gedcom_path, python_cmd):
 
 def test_cli_invalid_gedcom(python_cmd):
     """Test CLI with non-existent GEDCOM file."""
-    result = subprocess.run(
-        [python_cmd, "gedgraph.py", "pedigree", "nonexistent.ged", "@I1@", "-o", "out.dot"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    tmpdir = tempfile.mkdtemp()
+    nonexistent = str(Path(tmpdir) / "nonexistent.ged")
+    output_path = str(Path(tmpdir) / "out.dot")
+    try:
+        result = subprocess.run(
+            [python_cmd, "-m", "gedgraph", "pedigree", nonexistent, "@I1@", "-o", output_path],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
 
-    assert result.returncode != 0
-    assert "not found" in result.stderr
+        assert result.returncode != 0
+        assert "not found" in result.stderr
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
 
 
 def test_pedigree_generations(sample_gedcom_path, python_cmd):
@@ -168,7 +179,8 @@ def test_pedigree_generations(sample_gedcom_path, python_cmd):
         result = subprocess.run(
             [
                 python_cmd,
-                "gedgraph.py",
+                "-m",
+                "gedgraph",
                 "pedigree",
                 str(sample_gedcom_path),
                 "@I7@",
@@ -198,7 +210,8 @@ def test_relationship_max_depth(sample_gedcom_path, python_cmd):
         result = subprocess.run(
             [
                 python_cmd,
-                "gedgraph.py",
+                "-m",
+                "gedgraph",
                 "relationship",
                 str(sample_gedcom_path),
                 "@I1@",
@@ -217,3 +230,18 @@ def test_relationship_max_depth(sample_gedcom_path, python_cmd):
 
     finally:
         Path(output_path).unlink(missing_ok=True)
+
+
+def test_cli_main_module(python_cmd):
+    """Test that python -m gedgraph exposes all subcommands."""
+    result = subprocess.run(
+        [python_cmd, "-m", "gedgraph", "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "pedigree" in result.stdout
+    assert "relationship" in result.stdout
+    assert "hourglass" in result.stdout
+    assert "bowtie" in result.stdout
