@@ -25,7 +25,7 @@ Generate genealogical charts from GEDCOM files using GraphViz.
 ## Installation
 
 ```bash
-pip install gedgraph
+pip install kimon-gedgraph
 ```
 
 ### Development Setup

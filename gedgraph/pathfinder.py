@@ -1,5 +1,15 @@
+from __future__ import annotations
+
 from collections import deque
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from ged4py.model import Individual
+
+    from .parser import GedcomParser
 
 
 @dataclass
@@ -34,16 +44,21 @@ class RelationshipPath:
 
 
 class PathFinder:
-    def __init__(self, parser):
+    def __init__(self, parser: GedcomParser):
         self.parser = parser
 
-    def _bfs_traverse(self, individual_id: str, generations: int, get_relatives_fn):
+    def _bfs_traverse(
+        self,
+        individual_id: str,
+        generations: int,
+        get_relatives_fn: Callable[[Individual], list[Individual | None]],
+    ) -> list[tuple[Individual, int]]:
         """Generic BFS traversal - used for both ancestors and descendants."""
         individual = self.parser.get_individual(individual_id)
         if not individual:
             return []
 
-        results = []
+        results: list[tuple[Individual, int]] = []
         queue = deque([(individual, 0)])
         visited = {individual.xref_id}
 
@@ -60,7 +75,7 @@ class PathFinder:
 
         return results
 
-    def find_pedigree(self, individual_id: str, generations: int = 4):
+    def find_pedigree(self, individual_id: str, generations: int = 4) -> list[Individual]:
         results = self._bfs_traverse(
             individual_id, generations, lambda ind: [p for p in self.parser.get_parents(ind) if p]
         )
@@ -68,17 +83,19 @@ class PathFinder:
 
     def find_pedigree_with_generations(
         self, individual_id: str, generations: int = 4
-    ) -> list[tuple]:
+    ) -> list[tuple[Individual, int]]:
         return self._bfs_traverse(
             individual_id, generations, lambda ind: [p for p in self.parser.get_parents(ind) if p]
         )
 
-    def find_descendants(self, individual_id: str, generations: int = 4) -> list[tuple]:
+    def find_descendants(
+        self, individual_id: str, generations: int = 4
+    ) -> list[tuple[Individual, int]]:
         return self._bfs_traverse(individual_id, generations, self.parser.get_children)
 
     def find_pedigree_split(
         self, individual_id: str, generations: int = 4
-    ) -> tuple[list[tuple], list[tuple]]:
+    ) -> tuple[list[tuple[Individual, int]], list[tuple[Individual, int]]]:
         individual = self.parser.get_individual(individual_id)
         if not individual:
             return ([], [])
@@ -141,7 +158,7 @@ class PathFinder:
 
         return paths
 
-    def _get_neighbors(self, individual) -> list[tuple]:
+    def _get_neighbors(self, individual: Individual) -> list[tuple[Individual, PathStep]]:
         neighbors = []
         father, mother = self.parser.get_parents(individual)
 
@@ -187,7 +204,7 @@ class PathFinder:
 
         return neighbors
 
-    def _is_full_blood(self, parent, child) -> bool:
+    def _is_full_blood(self, parent: Individual, child: Individual) -> bool:
         """Check if parent-child relationship is full blood (both parents in same family)."""
         child_father, child_mother = self.parser.get_parents(child)
         if not child_father or not child_mother:

@@ -186,18 +186,21 @@ The `sample.ged` file contains:
 - Birth and death dates for testing date parsing
 - Both connected and disconnected individuals
 
+## Makefile Targets
+
+| Target | Description |
+|--------|-------------|
+| `make venv` | Create virtual environment in `.venv/` |
+| `make install` | Upgrade pip and install package in editable mode with dev deps |
+| `make test` | Run test suite with pytest |
+| `make lint` | Check formatting (black) and linting (ruff) |
+| `make fmt` | Auto-format code with black |
+| `make audit` | Audit dependencies for known vulnerabilities |
+| `make build` | Build distribution packages |
+| `make clean` | Remove build artifacts and `__pycache__` directories |
+| `make distclean` | Run `clean` and also remove the virtual environment |
+
 ## Code Quality
-
-```bash
-# Format code
-make fmt
-
-# Check formatting and linting
-make lint
-
-# Audit dependencies for security vulnerabilities
-make audit
-```
 
 ### Tools
 

@@ -1,20 +1,8 @@
 """Tests for relationship path finding."""
 
-from pathlib import Path
-
 import pytest
 
-from gedgraph.parser import GedcomParser
 from gedgraph.pathfinder import PathFinder
-
-
-@pytest.fixture
-def parser():
-    """Load sample GEDCOM file."""
-    gedcom_path = Path(__file__).parent / "fixtures" / "sample.ged"
-    p = GedcomParser(str(gedcom_path))
-    p.load()
-    return p
 
 
 @pytest.fixture
@@ -116,3 +104,31 @@ def test_generation_distance_sibling(pathfinder):
     paths = pathfinder.find_relationship_paths("@I7@", "@I8@")
     path = min(paths, key=lambda p: p.length())
     assert path.generation_distance() == 0
+
+
+def test_find_descendants(pathfinder):
+    """Test BFS descendant traversal from I1 through 4 generations."""
+    results = pathfinder.find_descendants("@I1@", 4)
+    ids = {t[0].xref_id for t in results}
+    assert ids == {"@I1@", "@I3@", "@I5@", "@I7@", "@I8@"}
+
+
+def test_find_pedigree_split(pathfinder):
+    """Test splitting pedigree into paternal and maternal lines."""
+    paternal, maternal = pathfinder.find_pedigree_split("@I5@", 3)
+    pat_ids = {t[0].xref_id for t in paternal}
+    mat_ids = {t[0].xref_id for t in maternal}
+    assert "@I3@" in pat_ids
+    assert "@I1@" in pat_ids
+    assert "@I4@" in mat_ids
+
+
+def test_find_pedigree_with_generations(pathfinder):
+    """Test that pedigree results include generation numbers."""
+    results = pathfinder.find_pedigree_with_generations("@I7@", 2)
+    gen_by_id = {t[0].xref_id: t[1] for t in results}
+    assert gen_by_id["@I7@"] == 0
+    assert gen_by_id["@I5@"] == 1
+    assert gen_by_id["@I6@"] == 1
+    assert gen_by_id["@I3@"] == 2
+    assert gen_by_id["@I4@"] == 2

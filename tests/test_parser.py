@@ -6,14 +6,15 @@ import pytest
 
 from gedgraph.parser import GedcomParser
 
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+
 
 @pytest.fixture
-def sample_gedcom():
-    """Load sample GEDCOM file."""
-    gedcom_path = Path(__file__).parent / "fixtures" / "sample.ged"
-    parser = GedcomParser(str(gedcom_path))
-    parser.load()
-    return parser
+def special_gedcom():
+    """Load special character GEDCOM file."""
+    p = GedcomParser(str(FIXTURES_DIR / "sample_special.ged"))
+    p.load()
+    return p
 
 
 def test_load_gedcom(sample_gedcom):
@@ -119,3 +120,35 @@ def test_is_not_full_sibling(sample_gedcom):
     robert = sample_gedcom.get_individual("@I3@")
     michael = sample_gedcom.get_individual("@I5@")
     assert not sample_gedcom.is_full_sibling(robert, michael)
+
+
+def test_get_families_as_spouse(sample_gedcom):
+    """Test getting families where individual is a spouse."""
+    i1 = sample_gedcom.get_individual("@I1@")
+    families = sample_gedcom.get_families_as_spouse(i1)
+    fam_ids = [f.xref_id for f in families]
+    assert "@F1@" in fam_ids
+
+
+def test_get_spouse_for_child(sample_gedcom):
+    """Test finding spouse via shared child."""
+    i1 = sample_gedcom.get_individual("@I1@")
+    i3 = sample_gedcom.get_individual("@I3@")
+    spouse, is_married = sample_gedcom.get_spouse_for_child(i1, i3)
+    assert spouse is not None
+    assert spouse.xref_id == "@I2@"
+    # No MARR tag in sample.ged F1, so is_married is False
+    assert is_married is False
+
+
+def test_birth_year_bapm_fallback(special_gedcom):
+    """I22 has no BIRT but has BAPM — birth year should fall back to BAPM."""
+    ind = special_gedcom.get_individual("@I22@")
+    assert special_gedcom.get_birth_year(ind) == "1900"
+
+
+def test_extract_year_malformed_date(special_gedcom):
+    """I23 has 'ABT UNKNOWN' as birth date — _extract_year returns None after S1-extra fix."""
+    ind = special_gedcom.get_individual("@I23@")
+    year = special_gedcom.get_birth_year(ind)
+    assert year is None

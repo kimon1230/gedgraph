@@ -2,9 +2,28 @@ import argparse
 import sys
 from pathlib import Path
 
+from ged4py.parser import IntegrityError, ParserError
+
 from .dotgen import DotGenerator
 from .parser import GedcomParser
 from .pathfinder import PathFinder
+
+
+def _add_common_args(parser: argparse.ArgumentParser) -> None:
+    """Add gedcom positional arg and -o/--output, shared by all subcommands."""
+    parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
+    parser.add_argument("-o", "--output", type=str, required=True, help="Output DOT file path")
+
+
+def _add_generation_args(parser: argparse.ArgumentParser) -> None:
+    """Add -g/--generations, shared by pedigree, hourglass, and bowtie."""
+    parser.add_argument(
+        "-g",
+        "--generations",
+        type=int,
+        default=4,
+        help="Number of generations (1-15, default: 4). Cost doubles per generation.",
+    )
 
 
 def main():
@@ -28,44 +47,30 @@ Examples:
     pedigree_parser = subparsers.add_parser(
         "pedigree", help="Generate pedigree chart for an individual"
     )
-    pedigree_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
+    _add_common_args(pedigree_parser)
     pedigree_parser.add_argument("individual", type=str, help="Individual ID (e.g., @I10@)")
-    pedigree_parser.add_argument(
-        "-g", "--generations", type=int, default=4, help="Number of generations (default: 4)"
-    )
-    pedigree_parser.add_argument(
-        "-o", "--output", type=str, required=True, help="Output DOT file path"
-    )
+    _add_generation_args(pedigree_parser)
 
     relationship_parser = subparsers.add_parser(
         "relationship", help="Generate relationship chart between two individuals"
     )
-    relationship_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
+    _add_common_args(relationship_parser)
     relationship_parser.add_argument("individual1", type=str, help="First individual ID")
     relationship_parser.add_argument("individual2", type=str, help="Second individual ID")
-    relationship_parser.add_argument(
-        "-o", "--output", type=str, required=True, help="Output DOT file path"
-    )
     relationship_parser.add_argument(
         "-d",
         "--max-depth",
         type=int,
         default=50,
-        help="Maximum search depth (default: 50)",
+        help="Maximum search depth (1-50, default: 50)",
     )
 
     hourglass_parser = subparsers.add_parser(
         "hourglass", help="Generate hourglass chart (ancestors and descendants)"
     )
-    hourglass_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
+    _add_common_args(hourglass_parser)
     hourglass_parser.add_argument("individual", type=str, help="Center individual ID (e.g., @I10@)")
-    hourglass_parser.add_argument(
-        "-g",
-        "--generations",
-        type=int,
-        default=4,
-        help="Number of generations in each direction (default: 4)",
-    )
+    _add_generation_args(hourglass_parser)
     hourglass_parser.add_argument(
         "-v",
         "--variant",
@@ -74,22 +79,13 @@ Examples:
         help="Chart variant: ancestor-split (father above, mother below) "
         "or descendants (ancestors above, descendants below)",
     )
-    hourglass_parser.add_argument(
-        "-o", "--output", type=str, required=True, help="Output DOT file path"
-    )
 
     bowtie_parser = subparsers.add_parser(
         "bowtie", help="Generate bowtie chart (horizontal hourglass)"
     )
-    bowtie_parser.add_argument("gedcom", type=str, help="Path to GEDCOM file")
+    _add_common_args(bowtie_parser)
     bowtie_parser.add_argument("individual", type=str, help="Center individual ID (e.g., @I10@)")
-    bowtie_parser.add_argument(
-        "-g",
-        "--generations",
-        type=int,
-        default=4,
-        help="Number of generations in each direction (default: 4)",
-    )
+    _add_generation_args(bowtie_parser)
     bowtie_parser.add_argument(
         "-v",
         "--variant",
@@ -98,15 +94,18 @@ Examples:
         help="Chart variant: ancestor-split (father left, mother right) "
         "or descendants (ancestors left, descendants right)",
     )
-    bowtie_parser.add_argument(
-        "-o", "--output", type=str, required=True, help="Output DOT file path"
-    )
 
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
         sys.exit(1)
+
+    sub = subparsers.choices[args.command]
+    if hasattr(args, "generations") and not 1 <= args.generations <= 15:
+        sub.error("--generations must be between 1 and 15")
+    if hasattr(args, "max_depth") and not 1 <= args.max_depth <= 50:
+        sub.error("--max-depth must be between 1 and 50")
 
     gedcom_path = Path(args.gedcom)
     if not gedcom_path.exists():
@@ -168,7 +167,7 @@ Examples:
             Path(args.output).write_text(dot)
             print(f"Bowtie: {gp.get_name(ind)} ({args.variant}) -> {args.output}")
 
-    except Exception as e:
+    except (ValueError, FileNotFoundError, KeyError, OSError, ParserError, IntegrityError) as e:
         sys.exit(f"Error: {e}")
 
 

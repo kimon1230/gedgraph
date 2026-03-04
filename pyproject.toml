@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gedgraph"
+name = "kimon-gedgraph"
 dynamic = ["version"]
 description = "Generate genealogical charts from GEDCOM files"
 readme = "README.md"
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["genealogy", "gedcom", "graphviz", "pedigree", "family-tree"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -34,14 +34,15 @@ dev = [
     "ruff>=0.1.0",
     "pip-audit>=2.6.0",
     "build>=1.0.0",
+    "pytest-cov>=4.0",
+    "mypy>=1.0",
 ]
 
 [project.scripts]
 gedgraph = "gedgraph.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/kimon-andreou/gedgraph"
-Repository = "https://github.com/kimon-andreou/gedgraph"
+Homepage = "https://github.com/kimon1230/gedgraph"
 
 [tool.setuptools.dynamic]
 version = {attr = "gedgraph.__version__"}
