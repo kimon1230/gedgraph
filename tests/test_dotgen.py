@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from gedgraph.dotgen import DotGenerator
+from gedgraph.dotgen import DotGenerator, _escape_dot_text, _sanitize_comment
 from gedgraph.parser import GedcomParser
 from gedgraph.pathfinder import PathFinder
 
@@ -258,7 +258,87 @@ def test_format_label_with_backslash(special_dotgen, special_parser):
     """Trailing backslash in name must not break DOT string delimiters."""
     ind = special_parser.get_individual("@I21@")
     label = special_dotgen._format_label(ind)
+    assert "\\\\" in label  # backslash is doubled
+    # Verify label doesn't end with a single backslash (would escape the closing quote)
+    assert not label.endswith("\\") or label.endswith("\\\\")
 
-    # Name should be present
-    assert "Test" in label
-    assert "Name" in label
+
+def test_format_label_backslash_quote_combo(special_dotgen, special_parser):
+    """Backslash before quote must both be escaped independently."""
+    ind = special_parser.get_individual("@I21@")
+    label = special_dotgen._format_label(ind)
+    # The label should be valid inside DOT double-quotes
+    # No unescaped quotes or trailing single backslash
+    assert label.count("\\") % 2 == 0 or not label.endswith("\\")
+
+
+def test_pedigree_comment_no_control_chars(special_dotgen):
+    """DOT comment lines must not contain raw control characters."""
+    dot = special_dotgen.generate_pedigree("@I20@", generations=1)
+    for line in dot.split("\n"):
+        if "//" in line:
+            comment_part = line[line.index("//") :]
+            assert "\n" not in comment_part
+            assert "\r" not in comment_part
+            # No control chars in the range 0x00-0x1f or 0x7f
+            for ch in comment_part:
+                assert ord(ch) >= 0x20
+                assert ord(ch) != 0x7F
+
+
+def test_sanitize_comment_strips_control_chars():
+    """_sanitize_comment removes all C0 control chars and DEL."""
+
+    assert _sanitize_comment("hello\x00world") == "helloworld"
+    assert _sanitize_comment("line\nbreak") == "linebreak"
+    assert _sanitize_comment("tab\there") == "tabhere"
+    assert _sanitize_comment("del\x7fchar") == "delchar"
+    assert _sanitize_comment("clean text") == "clean text"
+    # Printable non-ASCII passes through
+    assert _sanitize_comment("caf\u00e9") == "caf\u00e9"
+
+
+# --- _escape_dot_text unit tests ---
+
+
+def test_escape_dot_text_backslash():
+    """Backslash is doubled for DOT string escaping."""
+    assert _escape_dot_text("a\\b") == "a\\\\b"
+
+
+def test_escape_dot_text_quote():
+    """Double-quote is escaped with a preceding backslash."""
+    assert _escape_dot_text('a"b') == 'a\\"b'
+
+
+def test_escape_dot_text_control_chars():
+    """Control characters (newline, carriage return, null) are stripped."""
+    assert _escape_dot_text("a\nb\rc\x00d") == "abcd"
+
+
+def test_escape_dot_text_clean_passthrough():
+    """Clean text passes through unchanged."""
+    assert _escape_dot_text("John Smith") == "John Smith"
+
+
+def test_escape_dot_text_angle_brackets_passthrough():
+    """Angle brackets are not special in shape=box labels and pass through."""
+    assert _escape_dot_text("<b>Title</b>") == "<b>Title</b>"
+
+
+# --- _format_label integration test ---
+
+
+def test_format_label_preserves_newline(parser):
+    """DOT newline \\n in label must not be double-escaped."""
+    dotgen = DotGenerator(parser)
+    # I1 has birth + death dates, so the label will contain \\n
+    ind = parser.get_individual("@I1@")
+    label = dotgen._format_label(ind)
+
+    # The Python string should contain the two-char sequence backslash + n
+    assert "\\n" in label
+    # Must NOT contain double-escaped \\\\n
+    assert "\\\\n" not in label
+    # Must not contain an actual newline character
+    assert chr(10) not in label

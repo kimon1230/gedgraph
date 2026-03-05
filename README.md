@@ -15,6 +15,7 @@ Generate genealogical charts from GEDCOM files using GraphViz.
 - **Marriage Status Indicators**: Solid lines for married couples, dashed lines for unmarried couples
 - **Flexible Date Handling**: Uses birth/death dates with fallback to baptism/burial dates
 - **Enhanced Name Formatting**: Supports GEDCOM name components (prefix, title, given, surname, suffix)
+- **Progress Feedback**: Braille-spinner progress indicators with `--verbose`, `--quiet`, and `--no-color` options
 - **GraphViz Output**: Generates DOT files that can be rendered to various image formats
 
 ## Prerequisites
@@ -104,6 +105,27 @@ gedgraph bowtie family.ged @I10@ -v ancestor-split -o bowtie.dot
 Options:
 - `-g, --generations`: Number of generations in each direction (default: 4)
 - `-v, --variant`: Chart variant - `ancestor-split` or `descendants` (default: ancestor-split)
+
+### Global Options
+
+These flags must appear before the subcommand name:
+
+```bash
+# Suppress progress output
+gedgraph --quiet pedigree family.ged @I10@ -o output.dot
+
+# Show progress with timing
+gedgraph --verbose relationship family.ged @I10@ @I20@ -o output.dot
+
+# Disable colored output
+gedgraph --no-color hourglass family.ged @I10@ -o output.dot
+```
+
+| Flag | Description |
+|------|-------------|
+| `--verbose` | Show detailed progress with timing |
+| `-q, --quiet` | Suppress progress output |
+| `--no-color` | Disable colored output |
 
 ### Rendering DOT Files
 

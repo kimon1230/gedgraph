@@ -7,6 +7,7 @@ from ged4py.parser import IntegrityError, ParserError
 from .dotgen import DotGenerator
 from .parser import GedcomParser
 from .pathfinder import PathFinder
+from .progress import PhaseTracker
 
 
 def _add_common_args(parser: argparse.ArgumentParser) -> None:
@@ -33,14 +34,18 @@ def main():
         epilog="""
 Examples:
   gedgraph pedigree family.ged @I10@ -o pedigree.dot
-  gedgraph relationship family.ged @I10@ @I20@ -o rel.dot
-  gedgraph hourglass family.ged @I10@ -v descendants -o hourglass.dot
+  gedgraph --quiet relationship family.ged @I10@ @I20@ -o rel.dot
+  gedgraph --verbose hourglass family.ged @I10@ -v descendants -o hourglass.dot
   gedgraph bowtie family.ged @I10@ -v ancestor-split -o bowtie.dot
 
   # Render with GraphViz
   dot -Tpng output.dot -o output.png
         """,
     )
+
+    parser.add_argument("--verbose", action="store_true", help="Show detailed progress with timing")
+    parser.add_argument("-q", "--quiet", action="store_true", help="Suppress progress output")
+    parser.add_argument("--no-color", action="store_true", help="Disable colored output")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -113,8 +118,18 @@ Examples:
         sys.exit(1)
 
     try:
-        gp = GedcomParser(str(gedcom_path))
-        gp.load()
+        tracker = PhaseTracker(
+            3,
+            stream=sys.stderr,
+            no_color=args.no_color,
+            quiet=args.quiet,
+            verbose=args.verbose,
+        )
+
+        with tracker.phase("Loading GEDCOM"):
+            gp = GedcomParser(str(gedcom_path))
+            gp.load()
+
         gen = DotGenerator(gp)
 
         if args.command == "pedigree":
@@ -122,28 +137,31 @@ Examples:
             if not ind:
                 sys.exit(f"Error: Individual {args.individual} not found")
 
-            dot = gen.generate_pedigree(args.individual, args.generations)
-            Path(args.output).write_text(dot)
+            with tracker.phase("Generating pedigree"):
+                dot = gen.generate_pedigree(args.individual, args.generations)
+            with tracker.phase("Writing output"):
+                Path(args.output).write_text(dot, encoding="utf-8")
             print(f"Pedigree: {gp.get_name(ind)} - {args.generations} gen -> {args.output}")
 
         elif args.command == "relationship":
             ind1 = gp.get_individual(args.individual1)
             ind2 = gp.get_individual(args.individual2)
-
             if not ind1:
                 sys.exit(f"Error: Individual {args.individual1} not found")
             if not ind2:
                 sys.exit(f"Error: Individual {args.individual2} not found")
 
-            pf = PathFinder(gp)
-            paths = pf.get_shortest_paths(args.individual1, args.individual2, args.max_depth)
+            with tracker.phase("Finding relationship"):
+                pf = PathFinder(gp)
+                paths = pf.get_shortest_paths(args.individual1, args.individual2, args.max_depth)
 
             if not paths:
                 id1, id2 = args.individual1, args.individual2
                 sys.exit(f"Error: No relationship found between {id1} and {id2}")
 
-            dot = gen.generate_relationship(paths)
-            Path(args.output).write_text(dot)
+            with tracker.phase("Writing output"):
+                dot = gen.generate_relationship(paths)
+                Path(args.output).write_text(dot, encoding="utf-8")
             name1 = gp.get_name(ind1)
             name2 = gp.get_name(ind2)
             steps = paths[0].length()
@@ -154,8 +172,10 @@ Examples:
             if not ind:
                 sys.exit(f"Error: Individual {args.individual} not found")
 
-            dot = gen.generate_hourglass(args.individual, args.generations, args.variant)
-            Path(args.output).write_text(dot)
+            with tracker.phase("Generating hourglass"):
+                dot = gen.generate_hourglass(args.individual, args.generations, args.variant)
+            with tracker.phase("Writing output"):
+                Path(args.output).write_text(dot, encoding="utf-8")
             print(f"Hourglass: {gp.get_name(ind)} ({args.variant}) -> {args.output}")
 
         elif args.command == "bowtie":
@@ -163,8 +183,10 @@ Examples:
             if not ind:
                 sys.exit(f"Error: Individual {args.individual} not found")
 
-            dot = gen.generate_bowtie(args.individual, args.generations, args.variant)
-            Path(args.output).write_text(dot)
+            with tracker.phase("Generating bowtie"):
+                dot = gen.generate_bowtie(args.individual, args.generations, args.variant)
+            with tracker.phase("Writing output"):
+                Path(args.output).write_text(dot, encoding="utf-8")
             print(f"Bowtie: {gp.get_name(ind)} ({args.variant}) -> {args.output}")
 
     except (ValueError, FileNotFoundError, KeyError, OSError, ParserError, IntegrityError) as e:

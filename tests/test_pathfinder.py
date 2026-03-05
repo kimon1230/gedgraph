@@ -2,6 +2,7 @@
 
 import pytest
 
+import gedgraph.pathfinder as pf_mod
 from gedgraph.pathfinder import PathFinder
 
 
@@ -132,3 +133,30 @@ def test_find_pedigree_with_generations(pathfinder):
     assert gen_by_id["@I6@"] == 1
     assert gen_by_id["@I3@"] == 2
     assert gen_by_id["@I4@"] == 2
+
+
+def test_bfs_cap_limits_traversal(pathfinder, monkeypatch):
+    """BFS cap prevents unbounded memory growth."""
+
+    monkeypatch.setattr(pf_mod, "_MAX_NODES", 10)
+    paths = pathfinder.find_relationship_paths("@I1@", "@I7@")
+    assert isinstance(paths, list)
+
+
+def test_bfs_cap_returns_partial_results(pathfinder, monkeypatch):
+    """BFS cap returns paths found before hitting the limit."""
+
+    # With cap=0, no nodes can be enqueued beyond the start, so the only
+    # paths returned are those whose target is an immediate neighbor.
+    monkeypatch.setattr(pf_mod, "_MAX_NODES", 0)
+    paths = pathfinder.find_relationship_paths("@I1@", "@I7@")
+    assert isinstance(paths, list)
+    # 3-step path is unreachable with 0-node cap
+    assert all(p.length() <= 1 for p in paths)
+
+
+def test_bfs_cap_does_not_affect_normal_search(pathfinder):
+    """Default _MAX_NODES is large enough for the sample GEDCOM."""
+    paths = pathfinder.find_relationship_paths("@I1@", "@I7@")
+    assert len(paths) > 0
+    assert min(p.length() for p in paths) == 3

@@ -1,8 +1,10 @@
 """Tests for GEDCOM parser."""
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+from ged4py import GedcomReader
 
 from gedgraph.parser import GedcomParser
 
@@ -145,6 +147,32 @@ def test_birth_year_bapm_fallback(special_gedcom):
     """I22 has no BIRT but has BAPM — birth year should fall back to BAPM."""
     ind = special_gedcom.get_individual("@I22@")
     assert special_gedcom.get_birth_year(ind) == "1900"
+
+
+def test_load_calls_close_on_failure():
+    """If records0() raises mid-load, close() must release the file descriptor."""
+    sample = str(FIXTURES_DIR / "sample.ged")
+    gp = GedcomParser(sample)
+
+    original_enter = GedcomReader.__enter__
+
+    def enter_then_sabotage(self):
+        result = original_enter(self)
+        self.records0 = _boom_records0
+        return result
+
+    with (
+        patch.object(GedcomParser, "close", wraps=gp.close) as mock_close,
+        patch.object(GedcomReader, "__enter__", enter_then_sabotage),
+        pytest.raises(RuntimeError, match="boom"),
+    ):
+        gp.load()
+
+    mock_close.assert_called_once()
+
+
+def _boom_records0(_tag):
+    raise RuntimeError("boom")
 
 
 def test_extract_year_malformed_date(special_gedcom):

@@ -11,6 +11,7 @@ gedgraph/
 ├── parser.py         # GEDCOM file parsing and queries
 ├── pathfinder.py     # Relationship path finding algorithms
 ├── dotgen.py         # GraphViz DOT file generation
+├── progress.py       # Braille-spinner progress indicators (vendored from gedcom_tools)
 └── cli.py            # Command-line interface
 ```
 
@@ -131,6 +132,17 @@ This prioritizes: shorter paths, full blood over half blood, male line over fema
   - `ancestor-split`: Split by parental lines
   - `descendants`: Split by ancestors/descendants
 
+**Global Flags** (must precede the subcommand name):
+- `--verbose`: Show detailed progress with timing
+- `-q, --quiet`: Suppress progress output (spinner phases on stderr)
+- `--no-color`: Disable colored output
+
+**Progress Feedback**:
+- Each command runs through 3 phases: Loading GEDCOM, Generating/Finding chart, Writing output
+- Progress is displayed on stderr via `PhaseTracker` from `progress.py`
+- In quiet mode, all spinner output is suppressed; the stdout summary line is always emitted
+- Non-TTY environments (pipes, redirects) degrade gracefully — no animation, just final status
+
 **Error Handling**:
 - Validates GEDCOM file exists
 - Validates individual IDs exist
@@ -159,6 +171,8 @@ tests/
 ├── test_parser.py       # Parser unit tests
 ├── test_pathfinder.py   # Path finding unit tests
 ├── test_dotgen.py       # DOT generation unit tests
+├── test_progress.py     # Progress indicator unit tests
+├── test_cli.py          # CLI flag parsing and wiring tests
 └── test_integration.py  # End-to-end CLI tests
 ```
 

@@ -24,7 +24,7 @@ classifiers = [
     "Topic :: Sociology :: Genealogy",
 ]
 dependencies = [
-    "ged4py>=0.4.4",
+    "ged4py~=0.4.4",
 ]
 
 [project.optional-dependencies]

@@ -19,6 +19,22 @@ COLOR_MATERNAL = "lightyellow"
 COLOR_END = "lightblue"
 
 
+def _sanitize_comment(text: str) -> str:
+    """Strip control characters that could break DOT comment lines."""
+    return re.sub(r"[\x00-\x1f\x7f]", "", text)
+
+
+def _escape_dot_text(text: str) -> str:
+    """Escape characters special in DOT double-quoted label strings.
+
+    Only backslash and double-quote need escaping for shape=box labels.
+    Control characters are stripped (consistent with _sanitize_comment).
+    """
+    text = re.sub(r"[\x00-\x1f\x7f]", "", text)
+    text = text.replace("\\", "\\\\")
+    return text.replace('"', '\\"')
+
+
 class DotGenerator:
     def __init__(self, parser: GedcomParser):
         self.parser = parser
@@ -91,7 +107,7 @@ class DotGenerator:
             f"digraph {chart_type} {{",
             f"  rankdir={rankdir};",
             f'  node [shape=box, style="rounded,filled", fillcolor={COLOR_DEFAULT}];',
-            f"  // {self.parser.get_name(individual)}{comment_suffix}",
+            f"  // {_sanitize_comment(self.parser.get_name(individual))}{comment_suffix}",
             "",
         ]
 
@@ -163,7 +179,8 @@ class DotGenerator:
             "digraph Relationship {",
             "  rankdir=TB;",
             f'  node [shape=box, style="rounded,filled", fillcolor={COLOR_DEFAULT}];',
-            f"  // {self.parser.get_name(start)} to {self.parser.get_name(end)}",
+            f"  // {_sanitize_comment(self.parser.get_name(start))}"
+            f" to {_sanitize_comment(self.parser.get_name(end))}",
             f"  // {self._describe_relationship(path)} ({path.length()} steps)",
             "",
         ]
@@ -230,18 +247,18 @@ class DotGenerator:
         return "\n".join(lines)
 
     def _format_label(self, individual: Individual) -> str:
-        name = self.parser.get_name(individual)
+        name = _escape_dot_text(self.parser.get_name(individual))
         birth = self.parser.get_birth_year(individual)
         death = self.parser.get_death_year(individual)
 
         if birth or death:
-            b = birth or "?"
-            d = death or ""
+            b = _escape_dot_text(birth or "?")
+            d = _escape_dot_text(death or "")
             label = f"{name}\\n({b} - {d})" if d else f"{name}\\n({b} - )"
         else:
             label = name
 
-        return label.replace('"', '\\"')
+        return label
 
     def _escape_id(self, xref_id: str) -> str:
         stripped = xref_id.replace("@", "")

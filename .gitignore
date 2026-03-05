@@ -46,3 +46,9 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Credentials (defense-in-depth)
+*.pem
+*.key
+*.p12
+*.env

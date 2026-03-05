@@ -19,13 +19,15 @@ class GedcomParser:
     def load(self):
         self._reader = GedcomReader(self.gedcom_path)
         self._reader.__enter__()
-
-        self.gedcom = list(self._reader.records0("INDI"))
-        for indi in self.gedcom:
-            self._individuals[indi.xref_id] = indi
-
-        for fam in self._reader.records0("FAM"):
-            self._families[fam.xref_id] = fam
+        try:
+            self.gedcom = list(self._reader.records0("INDI"))
+            for indi in self.gedcom:
+                self._individuals[indi.xref_id] = indi
+            for fam in self._reader.records0("FAM"):
+                self._families[fam.xref_id] = fam
+        except Exception:
+            self.close()
+            raise
 
     def close(self):
         if self._reader:

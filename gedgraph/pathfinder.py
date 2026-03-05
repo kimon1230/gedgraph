@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
     from .parser import GedcomParser
 
+_MAX_NODES = 100_000
+
 
 @dataclass
 class PathStep:
@@ -134,6 +136,7 @@ class PathFinder:
         queue = deque([(start, [])])
         visited = {start.xref_id: 0}
         min_length = None
+        nodes_enqueued = 0
 
         while queue:
             current, path = queue.popleft()
@@ -153,6 +156,9 @@ class PathFinder:
                     continue
 
                 if neighbor.xref_id not in visited or visited[neighbor.xref_id] >= depth + 1:
+                    nodes_enqueued += 1
+                    if nodes_enqueued > _MAX_NODES:
+                        return paths
                     visited[neighbor.xref_id] = depth + 1
                     queue.append((neighbor, path + [step]))
 
