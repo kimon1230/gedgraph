@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Generate genealogical charts from GEDCOM files"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     {name = "Kimon Andreou"},
 ]
@@ -17,24 +17,26 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: End Users/Desktop",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Sociology :: Genealogy",
 ]
 dependencies = [
-    "ged4py~=0.4.4",
+    "ged4py>=0.5.2,<0.6",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.4.0",
-    "black>=24.10.0",
-    "ruff>=0.1.0",
-    "pip-audit>=2.6.0",
+    # Floors track what CI and local development actually run. ruff and black
+    # are capped because CI gates on them -- a new rule or style release should
+    # be adopted deliberately, not turn an unrelated PR red.
+    "pytest>=9.0",
+    "black>=26.5,<27",
+    "ruff>=0.16,<0.17",
+    "pip-audit>=2.10",
     "build>=1.0.0",
-    "pytest-cov>=4.0",
+    "pytest-cov>=7.0",
     "mypy>=1.0",
 ]
 
@@ -53,15 +55,19 @@ exclude = ["tests*"]
 
 [tool.black]
 line-length = 100
-target-version = ['py310', 'py311', 'py312', 'py313']
+target-version = ['py311', 'py312', 'py313']
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "DTZ", "T10", "ISC", "ICN", "PIE", "PT", "RET", "SIM", "ARG", "PTH", "PD", "PL", "NPY", "RUF"]
 ignore = ["PLR0913", "PLR2004", "PLR0915", "PLR0911", "PLR0912", "PTH123", "PT011", "RUF005"]
+
+[tool.ruff.lint.per-file-ignores]
+# Parametrized tests take fixtures positionally; that is the idiom, not a smell.
+"tests/*" = ["PLR0917"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

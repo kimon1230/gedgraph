@@ -20,7 +20,7 @@ Generate genealogical charts from GEDCOM files using GraphViz.
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [GraphViz](https://graphviz.org/) (`dot` command) installed on your system to render DOT files to images
 
 ## Installation
