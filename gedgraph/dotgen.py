@@ -58,11 +58,15 @@ class DotGenerator:
             comment_suffix=f" - {generations} generations",
         )
 
-    def _build_generation_map(self, individual_id, generations, variant):
+    def _build_generation_map(
+        self, individual_id: str, generations: int, variant: str
+    ) -> dict[int, list[Individual]]:
         """Build generation map for hourglass/bowtie charts."""
         pathfinder = PathFinder(self.parser)
         individual = self.parser.get_individual(individual_id)
-        gen_map = {}
+        if not individual:
+            raise ValueError(f"Individual {individual_id} not found")
+        gen_map: dict[int, list[Individual]] = {}
 
         if variant == "ancestor-split":
             father, mother = self.parser.get_parents(individual)

@@ -16,11 +16,15 @@ class GedcomParser:
         self._families: dict[str, Record] = {}
         self._reader: GedcomReader | None = None
 
-    def load(self):
+    def load(self) -> None:
         self._reader = GedcomReader(self.gedcom_path)
         self._reader.__enter__()
         try:
-            self.gedcom = list(self._reader.records0("INDI"))
+            # records0() is typed as yielding Record; the INDI tag narrows it to
+            # Individual, which ged4py's annotation cannot express.
+            self.gedcom = [
+                indi for indi in self._reader.records0("INDI") if isinstance(indi, Individual)
+            ]
             # Records without an xref id cannot be referenced by any FAM link, so
             # they can take part in no relationship. Skipping them keeps the
             # indexes keyed by str -- otherwise every such record collides on a
@@ -35,15 +39,17 @@ class GedcomParser:
             self.close()
             raise
 
-    def close(self):
+    def close(self) -> None:
         if self._reader:
-            self._reader.__exit__(None, None, None)
+            # ged4py types exc_type as `type` rather than `type | None`, but the
+            # no-exception call is None and the argument is ignored anyway.
+            self._reader.__exit__(None, None, None)  # type: ignore[arg-type]
             self._reader = None
 
-    def __enter__(self):
+    def __enter__(self) -> GedcomParser:
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         self.close()
 
     def get_individual(self, xref_id: str | None) -> Individual | None:

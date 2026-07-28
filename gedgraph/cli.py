@@ -74,7 +74,7 @@ def _add_generation_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def main():
+def main() -> None:
     # Before the parser: argparse writes --help and usage errors from inside
     # parse_args() and then exits.
     _harden_streams()
