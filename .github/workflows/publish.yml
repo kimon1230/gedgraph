@@ -8,7 +8,22 @@ permissions:
   contents: read
 
 jobs:
+  # Calling test.yml rather than duplicating its matrix: a copied matrix drifts
+  # from the PR gate silently, and the drift stays invisible until a release
+  # ships something the PR gate would have caught. pypi-publish already needs
+  # release-build, so the whole chain inherits this.
+  #
+  # Nothing to do at release time. But note the failure mode this introduces:
+  # GitHub creates the release object before this workflow runs, so a failing
+  # leg leaves the release published with nothing on PyPI. If that ever happens,
+  # fix the cause and re-run the failed jobs:
+  #   gh run list --workflow publish.yml     # the run will show as failed
+  #   gh run rerun <run-id> --failed
+  test:
+    uses: ./.github/workflows/test.yml
+
   release-build:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:

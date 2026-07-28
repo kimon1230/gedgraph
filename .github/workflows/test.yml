@@ -4,13 +4,20 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Called by publish.yml so a release cannot ship untested. branches: [main]
+  # above is load-bearing: an unfiltered push would also fire on the release
+  # tag, running these jobs standalone as well as through the caller.
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # In a called workflow the github context is the caller's, so an unconditional
+  # true would make a release run cancellable. Narrow requirement: a second
+  # publish run on the same tag must not cancel the first mid-upload.
+  cancel-in-progress: ${{ github.event_name != 'release' }}
 
 jobs:
   quality:
@@ -32,6 +39,38 @@ jobs:
 
       - name: Format check
         run: black --check .
+
+  audit:
+    # Runtime dependencies only. Auditing the [dev] tree would make an unrelated
+    # PR go red whenever a test-only package publishes a CVE, and this job is
+    # meant to block. The runtime surface is four packages: ged4py, ansel,
+    # convertdate, pymeeus.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.13"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      # Capped like the other tools CI gates on. pip-audit declares
+      # Requires-Python >=3.10 today; a release raising that past a matrix leg
+      # would break a blocking gate.
+      - name: Install pip-audit
+        run: python -m pip install 'pip-audit>=2.10,<3'
+
+      # `pip-audit .` resolves from pyproject.toml. Bare `pip-audit` would audit
+      # the installed environment instead -- including pip-audit's own ~30
+      # package tree, which is exactly the noise this job is scoped to exclude.
+      # --strict because the default exits 0 when dependency collection fails,
+      # and a blocking gate that silently audits nothing is worse than no gate.
+      - name: Audit runtime dependencies
+        run: pip-audit --strict --progress-spinner off .
 
   test:
     strategy:
