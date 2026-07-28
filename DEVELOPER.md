@@ -26,7 +26,9 @@ gedgraph/
 
 **Key Methods**:
 - `load()`: Parse GEDCOM file into memory
-- `get_individual(xref_id)`: Retrieve individual by ID
+- `get_individual(xref_id)`: Retrieve individual by ID. Accepts `str | None` and
+  returns `None` for `None` — ged4py's `Record.xref_id` is optional, so callers
+  routinely hold one that may be missing
 - `get_name(individual)`: Format name using NPFX/TITL GIVN SURN NSFX sequence
 - `get_birth_year()`, `get_death_year()`: Get vital dates with fallback to baptism/burial
 - `get_parents(individual)`: Get father and mother
@@ -38,6 +40,10 @@ gedgraph/
 **Implementation Notes**:
 - Individuals and families are loaded at initialization and kept in memory
 - GedcomReader stays open to allow lazy resolution of references
+- Records **without** an xref id are skipped at load. They cannot be referenced
+  by any `FAM` link, so they can take part in no relationship; indexing them
+  would collide every such record onto a single `None` key and silently discard
+  all but the last
 - Individuals cached in `_individuals` dict for O(1) lookup
 - Families cached in `_families` dict
 - Accepts IDs with or without @ symbols for convenience
@@ -256,7 +262,7 @@ helpers read `.buffer.getvalue()` and a live `.encoding`. They must patch both
 | `make venv` | Create virtual environment in `.venv/` |
 | `make install` | Upgrade pip and install package in editable mode with dev deps |
 | `make test` | Run test suite with pytest |
-| `make lint` | Check formatting (black) and linting (ruff) |
+| `make lint` | Check linting (ruff), formatting (black) and types (mypy) |
 | `make fmt` | Auto-format code with black |
 | `make audit` | Audit dependencies for known vulnerabilities |
 | `make build` | Build distribution packages |
