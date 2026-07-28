@@ -21,10 +21,16 @@ class GedcomParser:
         self._reader.__enter__()
         try:
             self.gedcom = list(self._reader.records0("INDI"))
+            # Records without an xref id cannot be referenced by any FAM link, so
+            # they can take part in no relationship. Skipping them keeps the
+            # indexes keyed by str -- otherwise every such record collides on a
+            # single None key and all but the last are silently discarded.
             for indi in self.gedcom:
-                self._individuals[indi.xref_id] = indi
+                if indi.xref_id is not None:
+                    self._individuals[indi.xref_id] = indi
             for fam in self._reader.records0("FAM"):
-                self._families[fam.xref_id] = fam
+                if fam.xref_id is not None:
+                    self._families[fam.xref_id] = fam
         except Exception:
             self.close()
             raise
@@ -40,7 +46,11 @@ class GedcomParser:
     def __exit__(self, *args):
         self.close()
 
-    def get_individual(self, xref_id: str) -> Individual | None:
+    def get_individual(self, xref_id: str | None) -> Individual | None:
+        # ged4py's Record.xref_id is optional, so callers routinely hold one that
+        # may be None. Looking up nothing finds nothing.
+        if xref_id is None:
+            return None
         if not xref_id.startswith("@"):
             xref_id = f"@{xref_id}@"
         return self._individuals.get(xref_id)
@@ -147,7 +157,9 @@ class GedcomParser:
                     children.append(child)
         return children
 
-    def _get_family(self, xref_id: str) -> Record | None:
+    def _get_family(self, xref_id: str | None) -> Record | None:
+        if xref_id is None:
+            return None
         return self._families.get(xref_id)
 
     def get_sex(self, individual: Individual) -> str | None:

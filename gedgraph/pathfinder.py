@@ -51,7 +51,7 @@ class PathFinder:
 
     def _bfs_traverse(
         self,
-        individual_id: str,
+        individual_id: str | None,
         generations: int,
         get_relatives_fn: Callable[[Individual], list[Individual | None]],
     ) -> list[tuple[Individual, int]]:
@@ -84,7 +84,7 @@ class PathFinder:
         return [ind for ind, _ in results]
 
     def find_pedigree_with_generations(
-        self, individual_id: str, generations: int = 4
+        self, individual_id: str | None, generations: int = 4
     ) -> list[tuple[Individual, int]]:
         return self._bfs_traverse(
             individual_id, generations, lambda ind: [p for p in self.parser.get_parents(ind) if p]

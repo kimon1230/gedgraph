@@ -262,7 +262,9 @@ class DotGenerator:
 
         return label
 
-    def _escape_id(self, xref_id: str) -> str:
+    def _escape_id(self, xref_id: str | None) -> str:
+        if xref_id is None:
+            return "_"
         stripped = xref_id.replace("@", "")
         cleaned = _NONALNUM_RE.sub("_", stripped)
         if cleaned and cleaned[0].isdigit():
