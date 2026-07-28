@@ -51,9 +51,12 @@ class PathFinder:
 
     def _bfs_traverse(
         self,
-        individual_id: str,
+        individual_id: str | None,
         generations: int,
-        get_relatives_fn: Callable[[Individual], list[Individual | None]],
+        # list is invariant, so list[Individual] is not assignable to
+        # list[Individual | None] even though the elements are compatible. All
+        # three callers return list[Individual].
+        get_relatives_fn: Callable[[Individual], list[Individual]],
     ) -> list[tuple[Individual, int]]:
         """Generic BFS traversal - used for both ancestors and descendants."""
         individual = self.parser.get_individual(individual_id)
@@ -84,7 +87,7 @@ class PathFinder:
         return [ind for ind, _ in results]
 
     def find_pedigree_with_generations(
-        self, individual_id: str, generations: int = 4
+        self, individual_id: str | None, generations: int = 4
     ) -> list[tuple[Individual, int]]:
         return self._bfs_traverse(
             individual_id, generations, lambda ind: [p for p in self.parser.get_parents(ind) if p]
@@ -133,7 +136,7 @@ class PathFinder:
             return [RelationshipPath(steps=[], start_id=start_id, end_id=end_id)]
 
         paths = []
-        queue = deque([(start, [])])
+        queue: deque[tuple[Individual, list[PathStep]]] = deque([(start, [])])
         visited = {start.xref_id: 0}
         min_length = None
         nodes_enqueued = 0
@@ -168,7 +171,9 @@ class PathFinder:
         neighbors = []
         father, mother = self.parser.get_parents(individual)
 
-        if father:
+        # A step needs an id to be referenced by; a record without one cannot be
+        # reached through any FAM link anyway.
+        if father and father.xref_id is not None:
             neighbors.append(
                 (
                     father,
@@ -181,7 +186,7 @@ class PathFinder:
                 )
             )
 
-        if mother:
+        if mother and mother.xref_id is not None:
             neighbors.append(
                 (
                     mother,
@@ -196,6 +201,8 @@ class PathFinder:
 
         is_male = self.parser.get_sex(individual) == "M"
         for child in self.parser.get_children(individual):
+            if child.xref_id is None:
+                continue
             neighbors.append(
                 (
                     child,

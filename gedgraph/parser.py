@@ -16,31 +16,47 @@ class GedcomParser:
         self._families: dict[str, Record] = {}
         self._reader: GedcomReader | None = None
 
-    def load(self):
+    def load(self) -> None:
         self._reader = GedcomReader(self.gedcom_path)
         self._reader.__enter__()
         try:
-            self.gedcom = list(self._reader.records0("INDI"))
+            # records0() is typed as yielding Record; the INDI tag narrows it to
+            # Individual, which ged4py's annotation cannot express.
+            self.gedcom = [
+                indi for indi in self._reader.records0("INDI") if isinstance(indi, Individual)
+            ]
+            # Records without an xref id cannot be referenced by any FAM link, so
+            # they can take part in no relationship. Skipping them keeps the
+            # indexes keyed by str -- otherwise every such record collides on a
+            # single None key and all but the last are silently discarded.
             for indi in self.gedcom:
-                self._individuals[indi.xref_id] = indi
+                if indi.xref_id is not None:
+                    self._individuals[indi.xref_id] = indi
             for fam in self._reader.records0("FAM"):
-                self._families[fam.xref_id] = fam
+                if fam.xref_id is not None:
+                    self._families[fam.xref_id] = fam
         except Exception:
             self.close()
             raise
 
-    def close(self):
+    def close(self) -> None:
         if self._reader:
-            self._reader.__exit__(None, None, None)
+            # ged4py types exc_type as `type` rather than `type | None`, but the
+            # no-exception call is None and the argument is ignored anyway.
+            self._reader.__exit__(None, None, None)  # type: ignore[arg-type]
             self._reader = None
 
-    def __enter__(self):
+    def __enter__(self) -> GedcomParser:
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: object) -> None:
         self.close()
 
-    def get_individual(self, xref_id: str) -> Individual | None:
+    def get_individual(self, xref_id: str | None) -> Individual | None:
+        # ged4py's Record.xref_id is optional, so callers routinely hold one that
+        # may be None. Looking up nothing finds nothing.
+        if xref_id is None:
+            return None
         if not xref_id.startswith("@"):
             xref_id = f"@{xref_id}@"
         return self._individuals.get(xref_id)
@@ -147,7 +163,9 @@ class GedcomParser:
                     children.append(child)
         return children
 
-    def _get_family(self, xref_id: str) -> Record | None:
+    def _get_family(self, xref_id: str | None) -> Record | None:
+        if xref_id is None:
+            return None
         return self._families.get(xref_id)
 
     def get_sex(self, individual: Individual) -> str | None:
@@ -170,7 +188,9 @@ class GedcomParser:
         same_father = p1_father and p2_father and p1_father.xref_id == p2_father.xref_id
         same_mother = p1_mother and p2_mother and p1_mother.xref_id == p2_mother.xref_id
 
-        return (same_father or same_mother) and not (same_father and same_mother)
+        # bool() is load-bearing: with a parent missing, same_father is None
+        # rather than False and the expression evaluates to None.
+        return bool((same_father or same_mother) and not (same_father and same_mother))
 
     def get_spouse_for_child(
         self, individual: Individual, child: Individual

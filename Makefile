@@ -14,6 +14,7 @@ test:
 lint:
 	.venv/bin/ruff check .
 	.venv/bin/black --check .
+	.venv/bin/mypy
 
 fmt:
 	.venv/bin/black .
@@ -29,7 +30,10 @@ build:
 clean:
 	rm -rf dist build *.egg-info
 	find . -path ./.venv -prune -o -type d -name __pycache__ -exec rm -rf {} +
-	find . -path ./.venv -prune -o -type f -name '*.pyc' -delete
+	# -delete implies -depth, which makes the preceding -prune a no-op; bfs
+	# rejects the combination outright and GNU findutils warns. Use -exec, as
+	# the line above already does.
+	find . -path ./.venv -prune -o -type f -name '*.pyc' -exec rm -f {} +
 
 distclean: clean
 	rm -rf .venv

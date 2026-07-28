@@ -26,7 +26,9 @@ gedgraph/
 
 **Key Methods**:
 - `load()`: Parse GEDCOM file into memory
-- `get_individual(xref_id)`: Retrieve individual by ID
+- `get_individual(xref_id)`: Retrieve individual by ID. Accepts `str | None` and
+  returns `None` for `None` — ged4py's `Record.xref_id` is optional, so callers
+  routinely hold one that may be missing
 - `get_name(individual)`: Format name using NPFX/TITL GIVN SURN NSFX sequence
 - `get_birth_year()`, `get_death_year()`: Get vital dates with fallback to baptism/burial
 - `get_parents(individual)`: Get father and mother
@@ -38,6 +40,10 @@ gedgraph/
 **Implementation Notes**:
 - Individuals and families are loaded at initialization and kept in memory
 - GedcomReader stays open to allow lazy resolution of references
+- Records **without** an xref id are skipped at load. They cannot be referenced
+  by any `FAM` link, so they can take part in no relationship; indexing them
+  would collide every such record onto a single `None` key and silently discard
+  all but the last
 - Individuals cached in `_individuals` dict for O(1) lookup
 - Families cached in `_families` dict
 - Accepts IDs with or without @ symbols for convenience
@@ -256,7 +262,7 @@ helpers read `.buffer.getvalue()` and a live `.encoding`. They must patch both
 | `make venv` | Create virtual environment in `.venv/` |
 | `make install` | Upgrade pip and install package in editable mode with dev deps |
 | `make test` | Run test suite with pytest |
-| `make lint` | Check formatting (black) and linting (ruff) |
+| `make lint` | Check linting (ruff), formatting (black) and types (mypy) |
 | `make fmt` | Auto-format code with black |
 | `make audit` | Audit dependencies for known vulnerabilities |
 | `make build` | Build distribution packages |
@@ -271,14 +277,20 @@ helpers read `.buffer.getvalue()` and a live `.encoding`. They must patch both
 - **ruff**: Fast Python linter — capped in the `dev` extra
 - **pip-audit**: Dependency vulnerability scanning
 - **pytest**: Testing framework
-- **mypy**: Declared in the `dev` extra for local use, but **not** a CI gate.
-  There are ~20 pre-existing errors, almost all `arg-type` from ged4py's
-  `xref_id` being `str | None`. Worth fixing; until then, gating on it would red
-  light unrelated pull requests.
+- **mypy**: A CI gate — capped in the `dev` extra. Configured in
+  `[tool.mypy]` with `files = ["gedgraph"]`, so run it as bare `mypy`; passing a
+  path on the command line overrides that config and lets local and CI diverge.
 
-black and ruff are version-capped because CI gates on them. A new lint rule or
-formatting release should be adopted deliberately, not arrive as a red build on
-an unrelated change.
+black, ruff and mypy are version-capped because CI gates on them. A new lint
+rule, formatting release or sharper type inference should be adopted
+deliberately, not arrive as a red build on an unrelated change.
+
+**`check_untyped_defs` is enabled**, which matters when adding code: mypy
+normally skips the body of any function with no annotations, so an unannotated
+helper would be exempt from checking entirely. That is how `cli.main()` and
+`GedcomParser.load()` — the CLI entry point and the routine that reads every
+record — went unchecked for as long as they did. Annotate new functions, or the
+gate will reject them.
 
 ## Continuous Integration
 
@@ -286,7 +298,7 @@ an unrelated change.
 
 | Job | Coverage |
 |-----|----------|
-| `quality` | `ruff check .` and `black --check .` |
+| `quality` | `ruff check .`, `black --check .`, and `mypy` |
 | `audit` | `pip-audit` over runtime dependencies only, on 3.11 and 3.13 |
 | `test` | pytest on Ubuntu × Windows, Python 3.11 × 3.13 |
 | `redirected-output` | Real shell redirection on both operating systems |

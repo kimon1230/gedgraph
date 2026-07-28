@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2026-07-28
+
+### Fixed
+- **Records with no cross-reference id silently discarded each other.** Every
+  such record was indexed under the same `None` key, so in a file containing
+  more than one, all but the last were dropped. They are now skipped at load —
+  a record with no xref id cannot be referenced by any `FAM` link, so it can
+  take part in no relationship and was never reachable to begin with.
+- `is_half_sibling()` returned `None` instead of `False` when an individual had
+  no recorded mother or father. Both values are falsy, so `if` checks behaved
+  correctly, but `result is False` did not.
+- `make clean` exited non-zero. `find -delete` implies `-depth`, which makes the
+  preceding `-prune` a no-op; some `find` implementations reject the combination
+  outright. It only surfaced when both `.venv` and a `.pyc` file were present.
+
+### Changed
+- `get_individual()`, `_get_family()` and `find_pedigree_with_generations()`
+  accept `str | None` and return `None`/empty for `None`. ged4py's
+  `Record.xref_id` is optional, so callers routinely hold an id that may be
+  missing; this is a widening and no existing call breaks.
+- `mypy` is now a CI gate, with `check_untyped_defs` enabled. New functions must
+  be annotated — mypy skips the body of any function without annotations, which
+  had left the CLI entry point and the GEDCOM loading routine unchecked.
+
 ## [1.2.0] - 2026-07-28
 
 ### Fixed

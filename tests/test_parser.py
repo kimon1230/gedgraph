@@ -124,6 +124,25 @@ def test_is_not_full_sibling(sample_gedcom):
     assert not sample_gedcom.is_full_sibling(robert, michael)
 
 
+def test_is_half_sibling_returns_false_not_none(sample_gedcom):
+    """A missing parent must yield False, not None.
+
+    @F4@ has a HUSB and no WIFE, so @I10@ has no mother and the `x and y`
+    chain in is_half_sibling evaluates to None. `is False` fails on None while
+    `not ...` would pass, so assert identity or the defect stays invisible.
+    """
+    david = sample_gedcom.get_individual("@I7@")
+    lisa = sample_gedcom.get_individual("@I10@")
+    assert sample_gedcom.is_half_sibling(david, lisa) is False
+
+
+def test_is_half_sibling_full_siblings_are_not_half(sample_gedcom):
+    """Control: both parents shared is not a half-sibling relationship."""
+    david = sample_gedcom.get_individual("@I7@")
+    emily = sample_gedcom.get_individual("@I8@")
+    assert sample_gedcom.is_half_sibling(david, emily) is False
+
+
 def test_get_families_as_spouse(sample_gedcom):
     """Test getting families where individual is a spouse."""
     i1 = sample_gedcom.get_individual("@I1@")

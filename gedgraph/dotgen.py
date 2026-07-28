@@ -47,7 +47,7 @@ class DotGenerator:
         pathfinder = PathFinder(self.parser)
         pedigree_list = pathfinder.find_pedigree_with_generations(individual_id, generations)
 
-        gen_map = {}
+        gen_map: dict[int, list[Individual]] = {}
         for ind, gen in pedigree_list:
             gen_map.setdefault(gen, []).append(ind)
 
@@ -58,11 +58,15 @@ class DotGenerator:
             comment_suffix=f" - {generations} generations",
         )
 
-    def _build_generation_map(self, individual_id, generations, variant):
+    def _build_generation_map(
+        self, individual_id: str, generations: int, variant: str
+    ) -> dict[int, list[Individual]]:
         """Build generation map for hourglass/bowtie charts."""
         pathfinder = PathFinder(self.parser)
         individual = self.parser.get_individual(individual_id)
-        gen_map = {}
+        if not individual:
+            raise ValueError(f"Individual {individual_id} not found")
+        gen_map: dict[int, list[Individual]] = {}
 
         if variant == "ancestor-split":
             father, mother = self.parser.get_parents(individual)
@@ -262,7 +266,9 @@ class DotGenerator:
 
         return label
 
-    def _escape_id(self, xref_id: str) -> str:
+    def _escape_id(self, xref_id: str | None) -> str:
+        if xref_id is None:
+            return "_"
         stripped = xref_id.replace("@", "")
         cleaned = _NONALNUM_RE.sub("_", stripped)
         if cleaned and cleaned[0].isdigit():
