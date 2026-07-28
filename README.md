@@ -15,12 +15,12 @@ Generate genealogical charts from GEDCOM files using GraphViz.
 - **Marriage Status Indicators**: Solid lines for married couples, dashed lines for unmarried couples
 - **Flexible Date Handling**: Uses birth/death dates with fallback to baptism/burial dates
 - **Enhanced Name Formatting**: Supports GEDCOM name components (prefix, title, given, surname, suffix)
-- **Progress Feedback**: Braille-spinner progress indicators with `--verbose`, `--quiet`, and `--no-color` options
+- **Progress Feedback**: Braille-spinner progress indicators with `--verbose`, `--quiet`, `--no-color`, and `--ascii` options
 - **GraphViz Output**: Generates DOT files that can be rendered to various image formats
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.11+
 - [GraphViz](https://graphviz.org/) (`dot` command) installed on your system to render DOT files to images
 
 ## Installation
@@ -119,6 +119,9 @@ gedgraph --verbose relationship family.ged @I10@ @I20@ -o output.dot
 
 # Disable colored output
 gedgraph --no-color hourglass family.ged @I10@ -o output.dot
+
+# Use ASCII decorations instead of braille/check marks
+gedgraph --ascii pedigree family.ged @I10@ -o output.dot
 ```
 
 | Flag | Description |
@@ -126,6 +129,24 @@ gedgraph --no-color hourglass family.ged @I10@ -o output.dot
 | `--verbose` | Show detailed progress with timing |
 | `-q, --quiet` | Suppress progress output |
 | `--no-color` | Disable colored output |
+| `--ascii` / `--no-ascii` | Use ASCII decorations (`[OK]`, `[!]`, `\|/-\`) instead of `✓`, `✗` and the braille spinner |
+
+`--ascii` is for consoles whose fonts cannot draw braille — common on Windows,
+where the spinner otherwise renders as a row of boxes. It can also be set with
+`GEDGRAPH_ASCII=1`; the flag wins over the environment variable in both
+directions.
+
+### Output Encoding
+
+Names are written to stdout in the console's own encoding. When output is
+redirected to a file or a pipe, UTF-8 is used instead — there is no terminal on
+the other end whose encoding matters, and this is what makes names with Greek,
+Cyrillic or accented characters survive `gedgraph ... > out.txt`.
+
+If you pin an encoding yourself with `PYTHONIOENCODING`, that choice is
+respected. Characters it cannot represent are escaped (`Α`) rather than
+causing the command to fail. Generated DOT files are always UTF-8, independent
+of the console.
 
 ### Rendering DOT Files
 

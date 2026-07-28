@@ -1,5 +1,6 @@
 """Integration tests for GedGraph."""
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -36,7 +37,7 @@ def test_cli_pedigree(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0
@@ -66,7 +67,7 @@ def test_cli_relationship(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0
@@ -98,7 +99,7 @@ def test_cli_no_relationship(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode != 0
@@ -122,7 +123,7 @@ def test_cli_invalid_individual(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode != 0
@@ -138,7 +139,7 @@ def test_cli_invalid_gedcom(python_cmd, tmp_path):
         [python_cmd, "-m", "gedgraph", "pedigree", nonexistent, "@I1@", "-o", output_path],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode != 0
@@ -164,7 +165,7 @@ def test_pedigree_generations(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0
@@ -191,7 +192,7 @@ def test_relationship_max_depth(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0
@@ -227,7 +228,7 @@ def test_cli_hourglass_bowtie(sample_gedcom_path, python_cmd, tmp_path, chart_ty
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -243,7 +244,7 @@ def test_cli_main_module(python_cmd):
         [python_cmd, "-m", "gedgraph", "--help"],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
     assert result.returncode == 0
     assert "pedigree" in result.stdout
@@ -272,7 +273,7 @@ def test_generations_out_of_range(sample_gedcom_path, python_cmd, tmp_path, gen_
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
     assert result.returncode != 0
 
@@ -297,7 +298,7 @@ def test_generations_boundary_valid(sample_gedcom_path, python_cmd, tmp_path, ge
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
     assert result.returncode == 0
 
@@ -323,7 +324,7 @@ def test_max_depth_out_of_range(sample_gedcom_path, python_cmd, tmp_path, depth_
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
     assert result.returncode != 0
 
@@ -348,7 +349,7 @@ def test_max_depth_boundary_valid_min(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
     assert result.returncode == 0
 
@@ -373,7 +374,7 @@ def test_max_depth_boundary_valid_max(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
     assert result.returncode == 0
 
@@ -388,7 +389,7 @@ def test_cli_malformed_gedcom(python_cmd, tmp_path):
         [python_cmd, "-m", "gedgraph", "pedigree", str(bad_ged), "@I1@", "-o", output_path],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode != 0
@@ -429,7 +430,7 @@ def test_cli_quiet_suppresses_progress(
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -454,10 +455,95 @@ def test_cli_default_shows_phases(sample_gedcom_path, python_cmd, tmp_path):
         ],
         check=False,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0
     assert "[1/3]" in result.stderr
     assert "Loading GEDCOM" in result.stderr
     assert "Writing output" in result.stderr
+
+
+@pytest.fixture
+def greek_gedcom_path():
+    """GEDCOM whose names cannot be encoded in any legacy codepage."""
+    return Path(__file__).parent / "fixtures" / "non_ascii_names.ged"
+
+
+SURNAME = "Ανδρέου"
+
+NON_ASCII_COMMANDS = [
+    ("pedigree", ["@I1@"]),
+    ("hourglass", ["@I1@"]),
+    ("bowtie", ["@I1@"]),
+    ("relationship", ["@I1@", "@I5@"]),
+]
+
+
+def _run_redirected(python_cmd, argv, out_file, io_encoding=None):
+    """Run the CLI with stdout going to a real file, not a pipe.
+
+    env must extend os.environ rather than replace it: a bare dict drops
+    SYSTEMROOT and PATH on Windows and the interpreter fails to start.
+    """
+    env = {**os.environ}
+    env.pop("PYTHONIOENCODING", None)
+    if io_encoding is not None:
+        env["PYTHONIOENCODING"] = io_encoding
+
+    with open(out_file, "wb") as stdout:
+        result = subprocess.run(
+            [python_cmd, "-m", "gedgraph", "-q", *argv],
+            check=False,
+            stdout=stdout,
+            stderr=subprocess.PIPE,
+            env=env,
+        )
+    return result, Path(out_file).read_bytes()
+
+
+@pytest.mark.parametrize(("command", "extra"), NON_ASCII_COMMANDS)
+def test_redirected_stdout_is_utf8(greek_gedcom_path, python_cmd, tmp_path, command, extra):
+    """The reported crash: worked interactively, died under `> out.txt`."""
+    argv = [command, str(greek_gedcom_path), *extra, "-o", str(tmp_path / "o.dot")]
+    result, raw = _run_redirected(python_cmd, argv, tmp_path / "out.txt")
+
+    assert result.returncode == 0, result.stderr
+    assert SURNAME in raw.decode("utf-8")
+
+
+@pytest.mark.parametrize(("command", "extra"), NON_ASCII_COMMANDS)
+def test_legacy_codepage_escapes_instead_of_crashing(
+    greek_gedcom_path, python_cmd, tmp_path, command, extra
+):
+    argv = [command, str(greek_gedcom_path), *extra, "-o", str(tmp_path / "o.dot")]
+    result, raw = _run_redirected(python_cmd, argv, tmp_path / "out.txt", io_encoding="cp1252")
+
+    assert result.returncode == 0, result.stderr
+    text = raw.decode("ascii")  # would raise if the escaping had not happened
+    assert "\\u0391" in text
+
+
+def test_non_ascii_output_path(greek_gedcom_path, python_cmd, tmp_path):
+    """backslashreplace escapes the echoed path too; the file must still land."""
+    out_dir = tmp_path / "Ανδρέου"
+    out_dir.mkdir()
+    dot_path = out_dir / "o.dot"
+    argv = ["pedigree", str(greek_gedcom_path), "@I1@", "-o", str(dot_path)]
+
+    result, _ = _run_redirected(python_cmd, argv, tmp_path / "out.txt", io_encoding="cp1252")
+
+    assert result.returncode == 0, result.stderr
+    assert dot_path.exists()
+
+
+def test_dot_output_is_utf8_regardless_of_console_encoding(greek_gedcom_path, python_cmd, tmp_path):
+    """The DOT file is written with an explicit encoding and must not follow
+    whatever the console happens to be set to."""
+    dot_path = tmp_path / "o.dot"
+    argv = ["pedigree", str(greek_gedcom_path), "@I1@", "-o", str(dot_path)]
+
+    result, _ = _run_redirected(python_cmd, argv, tmp_path / "out.txt", io_encoding="cp1252")
+
+    assert result.returncode == 0, result.stderr
+    assert SURNAME in dot_path.read_text(encoding="utf-8")

@@ -1,4 +1,7 @@
-# Vendored from gedcom_tools (2026-03-04). Keep in sync with upstream.
+# Vendored from gedcom_tools (2026-07-28). Keep in sync with upstream.
+# Glyph handling tracks gedcom_tools PR #14; the env var differs (GEDGRAPH_ASCII,
+# falling back to GEDCOM_TOOLS_ASCII) and non-ASCII is written as \uXXXX escapes
+# to keep this source pure ASCII.
 """Progress indicators for CLI feedback."""
 
 from __future__ import annotations
@@ -7,10 +10,55 @@ import os
 import sys
 import threading
 import time
-from typing import IO, TYPE_CHECKING
+from typing import IO, TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
     from types import TracebackType
+
+
+class GlyphSet(NamedTuple):
+    check: str
+    cross: str
+    arrow: str
+    frames: str
+
+
+UNICODE_GLYPHS = GlyphSet(
+    "\u2713",
+    "\u2717",
+    "\u2192",
+    "\u280b\u2819\u2839\u2838\u283c\u2834\u2826\u2827\u2807\u280f",
+)
+ASCII_GLYPHS = GlyphSet("[OK]", "[!]", "->", "|/-\\")
+
+# Encoding is handled by cli._harden_streams(); this is purely about whether the
+# terminal has a font that can draw the things. Windows console fonts routinely
+# lack braille and render the spinner as a row of boxes, and nothing about the
+# stream reveals that - so it's a switch, not a detection.
+_ascii_forced: bool | None = None
+_ASCII_OFF_VALUES = frozenset({"", "0", "false", "no", "off"})
+
+
+def set_ascii_mode(enabled: bool | None) -> None:
+    """Force ASCII decorations on or off; None defers to the environment."""
+    global _ascii_forced  # noqa: PLW0603 - deliberate process-wide switch
+    _ascii_forced = enabled
+
+
+def ascii_mode() -> bool:
+    if _ascii_forced is not None:
+        return _ascii_forced
+    # GEDCOM_TOOLS_ASCII honoured too: this module is vendored from that project
+    # and a user with both installed should not have to set two variables.
+    for var in ("GEDGRAPH_ASCII", "GEDCOM_TOOLS_ASCII"):
+        value = os.environ.get(var)
+        if value is not None:
+            return value.strip().lower() not in _ASCII_OFF_VALUES
+    return False
+
+
+def glyphs() -> GlyphSet:
+    return ASCII_GLYPHS if ascii_mode() else UNICODE_GLYPHS
 
 
 class Colors:
@@ -71,7 +119,8 @@ class Spinner:
                 s.update(f" ({i+1} items)")
     """
 
-    FRAMES = "\u280b\u2819\u2839\u2838\u283c\u2834\u2826\u2827\u2807\u280f"
+    # Retained for backwards compatibility; nothing in this class reads it.
+    FRAMES = UNICODE_GLYPHS.frames
 
     def __init__(
         self,
@@ -83,6 +132,7 @@ class Spinner:
         self.message = message
         self.stream = stream if stream is not None else sys.stderr
         self.colors = Colors(self.stream, force_disable=no_color)
+        self.glyphs = glyphs()
         self.is_tty = hasattr(self.stream, "isatty") and self.stream.isatty()
         self.show_timing = show_timing
         self._frame = 0
@@ -126,10 +176,13 @@ class Spinner:
     def _animate(self) -> None:
         while not self._stop_event.wait(0.08):
             with self._lock:
-                self._frame = (self._frame + 1) % len(self.FRAMES)
+                self._frame = (self._frame + 1) % len(self.glyphs.frames)
                 try:
                     self._render()
-                except OSError:
+                except Exception:
+                    # Anything escaping here kills the thread and dumps a
+                    # traceback through the middle of the user's output. The
+                    # right response to every fault is to stop animating.
                     break
 
     def update(self, suffix: str = "") -> None:
@@ -153,17 +206,25 @@ class Spinner:
                 elapsed = f" {self.colors.dim}({duration:.2f}s){self.colors.reset}"
             else:
                 elapsed = f" {self.colors.dim}({duration*1000:.0f}ms){self.colors.reset}"
-        if self.is_tty and self._line_written:
-            self.stream.write("\r\033[K")
-        icon = f"{self.colors.green}\u2713" if success else f"{self.colors.red}\u2717"
-        self.stream.write(f"{icon} {self.message}{elapsed}{self.colors.reset}\n")
-        self.stream.flush()
+        if success:
+            icon = f"{self.colors.green}{self.glyphs.check}"
+        else:
+            icon = f"{self.colors.red}{self.glyphs.cross}"
+        try:
+            if self.is_tty and self._line_written:
+                self.stream.write("\r\033[K")
+            self.stream.write(f"{icon} {self.message}{elapsed}{self.colors.reset}\n")
+            self.stream.flush()
+        except UnicodeError:
+            # Progress decoration is never worth failing a command over. The CLI
+            # hardens its streams; a library caller may not have.
+            pass
 
     # caller must hold _lock
     def _render(self) -> None:
         if not self.is_tty:
             return
-        frame = self.FRAMES[self._frame]
+        frame = self.glyphs.frames[self._frame]
         line = f"{self.colors.cyan}{frame}{self.colors.reset} {self.message}{self._suffix}"
         self.stream.write(f"\r\033[K{line}")
         self.stream.flush()

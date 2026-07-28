@@ -11,7 +11,7 @@ gedgraph/
 ├── parser.py         # GEDCOM file parsing and queries
 ├── pathfinder.py     # Relationship path finding algorithms
 ├── dotgen.py         # GraphViz DOT file generation
-├── progress.py       # Braille-spinner progress indicators (vendored from gedcom_tools)
+├── progress.py       # Progress indicators, Unicode/ASCII glyph sets (vendored from gedcom_tools)
 └── cli.py            # Command-line interface
 ```
 
@@ -136,12 +136,46 @@ This prioritizes: shorter paths, full blood over half blood, male line over fema
 - `--verbose`: Show detailed progress with timing
 - `-q, --quiet`: Suppress progress output (spinner phases on stderr)
 - `--no-color`: Disable colored output
+- `--ascii` / `--no-ascii`: Select ASCII or Unicode decorations
 
 **Progress Feedback**:
 - Each command runs through 3 phases: Loading GEDCOM, Generating/Finding chart, Writing output
 - Progress is displayed on stderr via `PhaseTracker` from `progress.py`
 - In quiet mode, all spinner output is suppressed; the stdout summary line is always emitted
 - Non-TTY environments (pipes, redirects) degrade gracefully — no animation, just final status
+
+**Stream Hardening** (`_harden_streams()`):
+
+Called as the first statement of `main()`, before the parser is built, because
+argparse writes `--help` and usage errors from inside `parse_args()` and then
+exits.
+
+- A redirected stream is reconfigured to UTF-8 with `backslashreplace`. Windows
+  picks the ANSI codepage for redirected streams, which cannot encode most
+  non-Latin names.
+- A TTY keeps its own encoding and gains only the error handler — forcing UTF-8
+  onto a cp1252 console produces mojibake.
+- `PYTHONIOENCODING` is respected. The bail-out tests whether the *error handler
+  field* is non-empty, not whether the string contains a colon: `cp1252:` names
+  no handler and still needs hardening.
+- Only the real interpreter streams are touched (`sys.stdout is sys.__stdout__`),
+  so pytest's capture is never mutated session-wide.
+- Idempotence is tracked per stream, so a call that hardens stdout cannot lock
+  stderr out of a later one.
+
+`UnicodeEncodeError` subclasses `ValueError`, so `cli.py` catches it *before* the
+broad handler — otherwise an encoding failure is reported as a parse error.
+
+**Glyph Selection** (`progress.py`):
+
+`GlyphSet` pairs a Unicode and an ASCII rendering of the check, cross, arrow and
+spinner frames. Selection is a switch rather than a detection: nothing about a
+stream reveals whether the terminal's font can draw braille. `_ascii_forced` is
+tri-state (`None` defers to `GEDGRAPH_ASCII`, then `GEDCOM_TOOLS_ASCII`), which
+is what lets `--no-ascii` override an exported environment variable.
+
+Note that the ASCII frame string is shorter than the Unicode one, so the frame
+counter must be bounded by the *active* set (`len(self.glyphs.frames)`).
 
 **Error Handling**:
 - Validates GEDCOM file exists
@@ -167,13 +201,16 @@ pip install -e ".[dev]"
 ```
 tests/
 ├── fixtures/
-│   └── sample.ged       # Sample GEDCOM for testing
-├── test_parser.py       # Parser unit tests
-├── test_pathfinder.py   # Path finding unit tests
-├── test_dotgen.py       # DOT generation unit tests
-├── test_progress.py     # Progress indicator unit tests
-├── test_cli.py          # CLI flag parsing and wiring tests
-└── test_integration.py  # End-to-end CLI tests
+│   ├── sample.ged            # Sample GEDCOM for testing
+│   ├── sample_special.ged    # Names with characters needing DOT escaping
+│   └── non_ascii_names.ged   # Greek names — encoding regression fixture
+├── test_parser.py            # Parser unit tests
+├── test_pathfinder.py        # Path finding unit tests
+├── test_dotgen.py            # DOT generation unit tests
+├── test_progress.py          # Progress indicators and glyph selection
+├── test_cli.py               # CLI flag parsing and wiring tests
+├── test_stream_hardening.py  # stdout/stderr encoding behaviour
+└── test_integration.py       # End-to-end CLI tests (subprocess)
 ```
 
 ### Running Tests
@@ -200,6 +237,18 @@ The `sample.ged` file contains:
 - Birth and death dates for testing date parsing
 - Both connected and disconnected individuals
 
+The `non_ascii_names.ged` file contains 5 individuals and 2 families with Greek
+names (surname `Ανδρέου`), arranged so `@I1@` is a grandchild of `@I5@` — which
+gives every subcommand something to walk, including a known 2-step relationship
+path. Greek specifically, not accented Latin: a name like `Müller` encodes
+cleanly in cp1252 and would not reproduce the bug this fixture exists for.
+
+Tests that exercise encoding install stream doubles built as `TextIOWrapper`
+subclasses over `BytesIO` with `write_through=True` — never `Mock`, since the
+helpers read `.buffer.getvalue()` and a live `.encoding`. They must patch both
+`sys.stdout` **and** `sys.__stdout__`, or the identity guard in
+`_harden_streams()` skips the stream and the assertions pass vacuously.
+
 ## Makefile Targets
 
 | Target | Description |
@@ -218,10 +267,48 @@ The `sample.ged` file contains:
 
 ### Tools
 
-- **black**: Code formatting (line length: 100)
-- **ruff**: Fast Python linter
+- **black**: Code formatting (line length: 100) — capped in the `dev` extra
+- **ruff**: Fast Python linter — capped in the `dev` extra
 - **pip-audit**: Dependency vulnerability scanning
 - **pytest**: Testing framework
+- **mypy**: Declared in the `dev` extra for local use, but **not** a CI gate.
+  There are ~20 pre-existing errors, almost all `arg-type` from ged4py's
+  `xref_id` being `str | None`. Worth fixing; until then, gating on it would red
+  light unrelated pull requests.
+
+black and ruff are version-capped because CI gates on them. A new lint rule or
+formatting release should be adopted deliberately, not arrive as a red build on
+an unrelated change.
+
+## Continuous Integration
+
+`.github/workflows/test.yml` runs on pull requests and pushes to `main`:
+
+| Job | Coverage |
+|-----|----------|
+| `quality` | `ruff check .` and `black --check .` |
+| `audit` | `pip-audit` over runtime dependencies only, on 3.11 and 3.13 |
+| `test` | pytest on Ubuntu × Windows, Python 3.11 × 3.13 |
+| `redirected-output` | Real shell redirection on both operating systems |
+
+**Why `redirected-output` is a separate job**: it reproduces the original bug the
+way a user hit it — a real `>` redirect, not a pipe from pytest. The steps use
+`shell: bash` deliberately, because `windows-latest` defaults to PowerShell,
+which decodes a native command's stdout through the OEM codepage and re-encodes
+it into the redirect target. Under PowerShell the UTF-8 assertion would fail
+against perfectly correct code.
+
+**Why `audit` installs runtime dependencies only**: auditing the `[dev]` tree
+would turn an unrelated pull request red whenever a test-only package publishes
+a CVE, and this job is meant to block. `pip-audit .` (project-path mode) resolves
+from `pyproject.toml` rather than auditing the installed environment, which would
+otherwise include pip-audit's own dependency tree.
+
+`.github/workflows/publish.yml` calls `test.yml` and gates `release-build` on it,
+so a release cannot ship untested. Note that GitHub creates the release object
+before the workflow runs: if a gated release fails, the release exists but
+nothing reached PyPI. Fix the cause, then
+`gh run list --workflow publish.yml` and `gh run rerun <run-id> --failed`.
 
 ## Adding New Features
 
@@ -279,5 +366,8 @@ For very large GEDCOM files (>100K individuals), consider:
 
 ## Dependencies
 
-- **ged4py**: GEDCOM parsing library (runtime dependency)
+- **ged4py**: GEDCOM parsing library (runtime dependency), `>=0.5.2,<0.6`. Note
+  that 0.5.2 requires Python >=3.11, which is why this project's floor is 3.11.
+  It pulls in `ansel`, `convertdate` and (transitively) `pymeeus`, so the audited
+  runtime surface is four packages, not one.
 - **GraphViz**: System tool (`dot` command) for rendering DOT files to images — not a Python package dependency, must be installed separately via your OS package manager

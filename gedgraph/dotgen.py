@@ -179,8 +179,10 @@ class DotGenerator:
             "digraph Relationship {",
             "  rankdir=TB;",
             f'  node [shape=box, style="rounded,filled", fillcolor={COLOR_DEFAULT}];',
-            f"  // {_sanitize_comment(self.parser.get_name(start))}"
-            f" to {_sanitize_comment(self.parser.get_name(end))}",
+            (
+                f"  // {_sanitize_comment(self.parser.get_name(start))}"
+                f" to {_sanitize_comment(self.parser.get_name(end))}"
+            ),
             f"  // {self._describe_relationship(path)} ({path.length()} steps)",
             "",
         ]
