@@ -18,8 +18,10 @@ lint:
 fmt:
 	.venv/bin/black .
 
+# Project-path mode, matching CI: a bare `pip-audit` would audit the installed
+# environment, including every dev tool, instead of the runtime dependencies.
 audit:
-	.venv/bin/pip-audit
+	.venv/bin/pip-audit --strict --progress-spinner off .
 
 build:
 	.venv/bin/python -m build

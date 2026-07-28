@@ -1,4 +1,7 @@
-# Vendored from gedcom_tools (2026-03-04). Keep in sync with upstream.
+# Vendored from gedcom_tools (2026-07-28). Keep in sync with upstream.
+# Glyph handling tracks gedcom_tools PR #14; the env var differs (GEDGRAPH_ASCII,
+# falling back to GEDCOM_TOOLS_ASCII) and non-ASCII is written as \uXXXX escapes
+# to keep this source pure ASCII.
 """Progress indicators for CLI feedback."""
 
 from __future__ import annotations
