@@ -1,0 +1,151 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Format check
+        run: black --check .
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+
+      - name: Test
+        run: pytest tests/ -q
+
+  redirected-output:
+    # Guards the UnicodeEncodeError that made the CLI unscriptable on Windows:
+    # it worked interactively and died the moment stdout was captured.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: python -m pip install -e "."
+
+      # shell: bash is not cosmetic. windows-latest defaults to PowerShell,
+      # which decodes a native command's stdout through the OEM codepage and
+      # re-encodes it into the redirect target -- the UTF-8 bytes would arrive
+      # as mojibake and the assertion below would fail against correct code.
+      #
+      # set +e because the runner uses `bash -e`: a failing run would otherwise
+      # abort the step before the exit code could be recorded.
+      - name: Redirect to a file
+        shell: bash
+        run: |
+          set +e
+          gedgraph -q pedigree tests/fixtures/non_ascii_names.ged @I1@ -o out.dot > utf8.txt
+          echo $? > utf8_exit.txt
+
+      # PYTHONIOENCODING is honoured rather than overridden, so here the tool
+      # must escape rather than re-encode - and above all must not crash.
+      - name: Redirect under a legacy codepage
+        shell: bash
+        env:
+          PYTHONIOENCODING: cp1252
+        run: |
+          set +e
+          gedgraph -q pedigree tests/fixtures/non_ascii_names.ged @I1@ -o legacy.dot > legacy.txt
+          echo $? > legacy_exit.txt
+
+      # shell: python so the assertions behave identically on both runners.
+      - name: Assert both legs succeeded and kept their text
+        shell: python
+        run: |
+          import pathlib
+          import sys
+
+          expected = "Ανδρέου"  # Andreou in Greek
+          problems = []
+
+          def exit_code(name):
+              return int(pathlib.Path(name).read_text().strip())
+
+          for leg in ("utf8", "legacy"):
+              code = exit_code(f"{leg}_exit.txt")
+              if code != 0:
+                  problems.append(f"{leg} leg exited {code}")
+
+          # Windows text mode translates newlines and reconfigure() does not
+          # change that, so normalize before comparing.
+          raw = pathlib.Path("utf8.txt").read_bytes()
+          try:
+              text = raw.decode("utf-8").replace("\r\n", "\n")
+          except UnicodeDecodeError as exc:
+              problems.append(f"utf8 leg is not UTF-8: {exc}")
+          else:
+              if expected not in text:
+                  problems.append(f"utf8 leg lost the name: {text!r}")
+
+          raw = pathlib.Path("legacy.txt").read_bytes()
+          if not raw:
+              problems.append("legacy leg produced no output")
+          try:
+              text = raw.decode("ascii").replace("\r\n", "\n")
+          except UnicodeDecodeError as exc:
+              problems.append(f"legacy leg is not pure ASCII: {exc}")
+          else:
+              # "non-empty and ASCII" alone would be satisfied by a truncated
+              # file or an early `Error:` line, so check the actual content.
+              if "\\u0391" not in text:
+                  problems.append(f"legacy leg is missing the escaped name: {text!r}")
+              if "-> " not in text:
+                  problems.append(f"legacy leg is missing the output path: {text!r}")
+
+          if problems:
+              sys.exit("; ".join(problems))
+          print("redirected output OK")
