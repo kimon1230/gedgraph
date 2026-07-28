@@ -8,7 +8,7 @@ from ged4py.parser import IntegrityError, ParserError
 from .dotgen import DotGenerator
 from .parser import GedcomParser
 from .pathfinder import PathFinder
-from .progress import PhaseTracker
+from .progress import PhaseTracker, set_ascii_mode
 
 _hardened_streams: set[str] = set()
 
@@ -97,6 +97,13 @@ Examples:
     parser.add_argument("--verbose", action="store_true", help="Show detailed progress with timing")
     parser.add_argument("-q", "--quiet", action="store_true", help="Suppress progress output")
     parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+    parser.add_argument(
+        "--ascii",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Use ASCII-only decorations, for consoles lacking the glyph fonts "
+        "(must come before the subcommand)",
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -152,6 +159,9 @@ Examples:
     )
 
     args = parser.parse_args()
+
+    if args.ascii is not None:
+        set_ascii_mode(args.ascii)
 
     if not args.command:
         parser.print_help()
