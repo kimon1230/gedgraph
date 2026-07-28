@@ -271,14 +271,20 @@ helpers read `.buffer.getvalue()` and a live `.encoding`. They must patch both
 - **ruff**: Fast Python linter — capped in the `dev` extra
 - **pip-audit**: Dependency vulnerability scanning
 - **pytest**: Testing framework
-- **mypy**: Declared in the `dev` extra for local use, but **not** a CI gate.
-  There are ~20 pre-existing errors, almost all `arg-type` from ged4py's
-  `xref_id` being `str | None`. Worth fixing; until then, gating on it would red
-  light unrelated pull requests.
+- **mypy**: A CI gate — capped in the `dev` extra. Configured in
+  `[tool.mypy]` with `files = ["gedgraph"]`, so run it as bare `mypy`; passing a
+  path on the command line overrides that config and lets local and CI diverge.
 
-black and ruff are version-capped because CI gates on them. A new lint rule or
-formatting release should be adopted deliberately, not arrive as a red build on
-an unrelated change.
+black, ruff and mypy are version-capped because CI gates on them. A new lint
+rule, formatting release or sharper type inference should be adopted
+deliberately, not arrive as a red build on an unrelated change.
+
+**`check_untyped_defs` is enabled**, which matters when adding code: mypy
+normally skips the body of any function with no annotations, so an unannotated
+helper would be exempt from checking entirely. That is how `cli.main()` and
+`GedcomParser.load()` — the CLI entry point and the routine that reads every
+record — went unchecked for as long as they did. Annotate new functions, or the
+gate will reject them.
 
 ## Continuous Integration
 
@@ -286,7 +292,7 @@ an unrelated change.
 
 | Job | Coverage |
 |-----|----------|
-| `quality` | `ruff check .` and `black --check .` |
+| `quality` | `ruff check .`, `black --check .`, and `mypy` |
 | `audit` | `pip-audit` over runtime dependencies only, on 3.11 and 3.13 |
 | `test` | pytest on Ubuntu × Windows, Python 3.11 × 3.13 |
 | `redirected-output` | Real shell redirection on both operating systems |

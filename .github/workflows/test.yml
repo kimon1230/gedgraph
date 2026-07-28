@@ -40,6 +40,12 @@ jobs:
       - name: Format check
         run: black --check .
 
+      # Bare `mypy`, not `mypy gedgraph/`: a path argument on the command line
+      # overrides [tool.mypy] files, which would let local and CI diverge on
+      # what is actually checked.
+      - name: Type check
+        run: mypy
+
   audit:
     # Runtime dependencies only. Auditing the [dev] tree would make an unrelated
     # PR go red whenever a test-only package publishes a CVE, and this job is

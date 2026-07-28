@@ -37,7 +37,7 @@ dev = [
     "pip-audit>=2.10",
     "build>=1.0.0",
     "pytest-cov>=7.0",
-    "mypy>=1.0",
+    "mypy>=2.3,<3",
 ]
 
 [project.scripts]
