@@ -182,7 +182,9 @@ class GedcomParser:
         same_father = p1_father and p2_father and p1_father.xref_id == p2_father.xref_id
         same_mother = p1_mother and p2_mother and p1_mother.xref_id == p2_mother.xref_id
 
-        return (same_father or same_mother) and not (same_father and same_mother)
+        # bool() is load-bearing: with a parent missing, same_father is None
+        # rather than False and the expression evaluates to None.
+        return bool((same_father or same_mother) and not (same_father and same_mother))
 
     def get_spouse_for_child(
         self, individual: Individual, child: Individual

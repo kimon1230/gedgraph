@@ -47,7 +47,7 @@ class DotGenerator:
         pathfinder = PathFinder(self.parser)
         pedigree_list = pathfinder.find_pedigree_with_generations(individual_id, generations)
 
-        gen_map = {}
+        gen_map: dict[int, list[Individual]] = {}
         for ind, gen in pedigree_list:
             gen_map.setdefault(gen, []).append(ind)
 
