@@ -33,7 +33,7 @@ dev = [
     # be adopted deliberately, not turn an unrelated PR red.
     "pytest>=9.0",
     "black>=26.5,<27",
-    "ruff>=0.16,<0.17",
+    "ruff>=0.16,<0.18",
     "pip-audit>=2.10",
     "build>=1.0.0",
     "pytest-cov>=7.0",
