@@ -1,0 +1,209 @@
+0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @G0@ INDI
+1 NAME Focal /Person/
+1 SEX M
+1 FAMC @FG0@
+1 FAMS @FGS@
+0 @GF@ INDI
+1 NAME Father /Person/
+1 SEX M
+1 FAMC @FGP@
+1 FAMS @FG0@
+0 @GM@ INDI
+1 NAME Mother /Maiden/
+1 SEX F
+1 FAMC @FGM@
+1 FAMS @FG0@
+0 @GPF@ INDI
+1 NAME Paternal Grandfather /Person/
+1 SEX M
+1 FAMS @FGP@
+0 @GPM@ INDI
+1 NAME Paternal Grandmother /Person/
+1 SEX F
+1 FAMS @FGP@
+0 @GMF@ INDI
+1 NAME Maternal Grandfather /Maiden/
+1 SEX M
+1 FAMS @FGM@
+0 @GMM@ INDI
+1 NAME Maternal Grandmother /Maiden/
+1 SEX F
+1 FAMS @FGM@
+0 @GU@ INDI
+1 NAME Paternal Uncle /Person/
+1 SEX M
+1 FAMC @FGP@
+1 FAMS @FGU@
+0 @GUW@ INDI
+1 NAME Aunt By Marriage /Person/
+1 SEX F
+1 FAMS @FGU@
+0 @GC@ INDI
+1 NAME Paternal Cousin /Person/
+1 SEX F
+1 FAMC @FGU@
+0 @GW@ INDI
+1 NAME Wife /Person/
+1 SEX F
+1 FAMS @FGS@
+0 @K-1@ INDI
+1 NAME Son /Person/
+1 SEX M
+1 FAMC @FGS@
+1 FAMS @FGK@
+0 @K.1@ INDI
+1 NAME Daughter /Person/
+1 SEX F
+1 FAMC @FGS@
+0 @KW@ INDI
+1 NAME Daughter-in-law /Person/
+1 SEX F
+1 FAMS @FGK@
+0 @KC@ INDI
+1 NAME Grandson /Person/
+1 SEX M
+1 FAMC @FGK@
+0 @C0@ INDI
+1 NAME Cousins Child /Kin/
+1 SEX F
+1 FAMC @FC0@
+0 @CF@ INDI
+1 NAME Cousin Groom /Kin/
+1 SEX M
+1 FAMC @FCF@
+1 FAMS @FC0@
+0 @CM@ INDI
+1 NAME Cousin Bride /Kin/
+1 SEX F
+1 FAMC @FCM@
+1 FAMS @FC0@
+0 @CA1@ INDI
+1 NAME Groom Father /Kin/
+1 SEX M
+1 FAMC @FI1@
+1 FAMS @FCF@
+0 @CB1@ INDI
+1 NAME Groom Mother /Other/
+1 SEX F
+1 FAMC @FI1_2@
+1 FAMS @FCF@
+0 @CA2@ INDI
+1 NAME Bride Mother /Kin/
+1 SEX F
+1 FAMC @FI1@
+1 FAMS @FCM@
+0 @CB2@ INDI
+1 NAME Bride Father /Outsider/
+1 SEX M
+1 FAMS @FCM@
+0 @I1@ INDI
+1 NAME Shared Great-grandfather /Kin/
+1 SEX M
+1 FAMS @FI1@
+0 @I1_2@ INDI
+1 NAME Other Great-grandfather /Other/
+1 SEX M
+1 FAMS @FI1_2@
+0 @U0@ INDI
+1 NAME Uneven Child /Line/
+1 SEX M
+1 FAMC @FU0@
+0 @UF@ INDI
+1 NAME Uneven Father /Line/
+1 SEX M
+1 FAMC @FUA@
+1 FAMS @FU0@
+0 @UM@ INDI
+1 NAME Uneven Mother /Line/
+1 SEX F
+1 FAMC @FUB@
+1 FAMS @FU0@
+0 @UA@ INDI
+1 NAME Elder Son /Line/
+1 SEX M
+1 FAMC @FUX@
+1 FAMS @FUA@
+0 @UC@ INDI
+1 NAME Younger Son /Line/
+1 SEX M
+1 FAMC @FUX@
+1 FAMS @FUC@
+0 @UB@ INDI
+1 NAME Fathers Cousin /Line/
+1 SEX M
+1 FAMC @FUC@
+1 FAMS @FUB@
+0 @UX@ INDI
+1 NAME Patriarch /Line/
+1 SEX M
+1 FAMS @FUX@
+0 @FG0@ FAM
+1 HUSB @GF@
+1 WIFE @GM@
+1 CHIL @G0@
+0 @FGP@ FAM
+1 HUSB @GPF@
+1 WIFE @GPM@
+1 CHIL @GF@
+1 CHIL @GU@
+0 @FGM@ FAM
+1 HUSB @GMF@
+1 WIFE @GMM@
+1 CHIL @GM@
+0 @FGU@ FAM
+1 HUSB @GU@
+1 WIFE @GUW@
+1 CHIL @GC@
+0 @FGS@ FAM
+1 HUSB @G0@
+1 WIFE @GW@
+1 MARR
+2 DATE 1990
+1 CHIL @K-1@
+1 CHIL @K.1@
+0 @FGK@ FAM
+1 HUSB @K-1@
+1 WIFE @KW@
+1 CHIL @KC@
+0 @FC0@ FAM
+1 HUSB @CF@
+1 WIFE @CM@
+1 CHIL @C0@
+0 @FCF@ FAM
+1 HUSB @CA1@
+1 WIFE @CB1@
+1 CHIL @CF@
+0 @FCM@ FAM
+1 HUSB @CB2@
+1 WIFE @CA2@
+1 CHIL @CM@
+0 @FI1@ FAM
+1 HUSB @I1@
+1 CHIL @CA1@
+1 CHIL @CA2@
+0 @FI1_2@ FAM
+1 HUSB @I1_2@
+1 CHIL @CB1@
+0 @FU0@ FAM
+1 HUSB @UF@
+1 WIFE @UM@
+1 CHIL @U0@
+0 @FUX@ FAM
+1 HUSB @UX@
+1 CHIL @UA@
+1 CHIL @UC@
+0 @FUA@ FAM
+1 HUSB @UA@
+1 CHIL @UF@
+0 @FUC@ FAM
+1 HUSB @UC@
+1 CHIL @UB@
+0 @FUB@ FAM
+1 HUSB @UB@
+1 CHIL @UM@
+0 TRLR

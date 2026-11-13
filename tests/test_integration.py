@@ -71,8 +71,9 @@ def test_cli_relationship(sample_gedcom_path, python_cmd, tmp_path):
     )
 
     assert result.returncode == 0
-    assert "Relationship:" in result.stdout
-    assert "3 steps" in result.stdout
+    assert result.stdout == (
+        f"Relationship: David Smith is John Smith's great-grandson (3 steps) -> {output_path}\n"
+    )
 
     with open(output_path) as f:
         content = f.read()
@@ -196,6 +197,9 @@ def test_relationship_max_depth(sample_gedcom_path, python_cmd, tmp_path):
     )
 
     assert result.returncode == 0
+    assert result.stdout == (
+        f"Relationship: David Smith is John Smith's great-grandson (3 steps) -> {output_path}\n"
+    )
 
 
 @pytest.mark.parametrize(
@@ -275,7 +279,8 @@ def test_generations_out_of_range(sample_gedcom_path, python_cmd, tmp_path, gen_
         capture_output=True,
         encoding="utf-8",
     )
-    assert result.returncode != 0
+    assert result.returncode == 2
+    assert "--generations must be between 1 and 15" in result.stderr
 
 
 @pytest.mark.parametrize("gen_val", ["1", "15"])
@@ -326,7 +331,8 @@ def test_max_depth_out_of_range(sample_gedcom_path, python_cmd, tmp_path, depth_
         capture_output=True,
         encoding="utf-8",
     )
-    assert result.returncode != 0
+    assert result.returncode == 2
+    assert "--max-depth must be between 1 and 50" in result.stderr
 
 
 def test_max_depth_boundary_valid_min(sample_gedcom_path, python_cmd, tmp_path):
@@ -547,3 +553,21 @@ def test_dot_output_is_utf8_regardless_of_console_encoding(greek_gedcom_path, py
 
     assert result.returncode == 0, result.stderr
     assert SURNAME in dot_path.read_text(encoding="utf-8")
+
+
+@pytest.mark.skipif(os.name != "posix", reason="/dev/stdout")
+def test_output_to_dev_stdout_is_refused(sample_gedcom_path, python_cmd, tmp_path):
+    """The summary line shares stdout, so the DOT would never be usable there."""
+    target = tmp_path / "chart.dot"
+    with target.open("w", encoding="utf-8") as stdout:
+        result = subprocess.run(
+            [python_cmd, "-m", "gedgraph", "-q", "pedigree", str(sample_gedcom_path), "@I1@"]
+            + ["-o", "/dev/stdout"],
+            check=False,
+            stdout=stdout,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+        )
+    assert result.returncode == 2
+    assert "--output must be a regular file, not a link or device" in result.stderr
+    assert target.read_text(encoding="utf-8") == ""

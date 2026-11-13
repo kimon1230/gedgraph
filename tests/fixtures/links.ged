@@ -1,0 +1,156 @@
+0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @P1@ INDI
+1 NAME Paul /Birch/
+1 SEX M
+1 FAMS @F1@
+0 @M1@ INDI
+1 NAME Mary /Birch/
+1 SEX F
+1 FAMS @F1@
+1 FAMS @F4@
+0 @AP@ INDI
+1 NAME Adam /Ash/
+1 SEX M
+1 FAMS @F2@
+0 @AM@ INDI
+1 NAME Alice /Ash/
+1 SEX F
+1 FAMS @F2@
+0 @FP@ INDI
+1 NAME Frank /Fir/
+1 SEX M
+1 FAMS @F3@
+0 @FM@ INDI
+1 NAME Flora /Fir/
+1 SEX F
+1 FAMS @F3@
+0 @SF@ INDI
+1 NAME Simon /Spruce/
+1 SEX M
+1 FAMS @F4@
+0 @P5@ INDI
+1 NAME Peter /Pine/
+1 SEX M
+1 FAMS @F5@
+0 @M5@ INDI
+1 NAME Martha /Pine/
+1 SEX F
+0 @P6@ INDI
+1 NAME Oliver /Oak/
+1 SEX M
+1 FAMS @F6@
+0 @M6@ INDI
+1 NAME Olive /Oak/
+1 SEX F
+1 FAMS @F6@
+0 @H7@ INDI
+1 NAME Henry /Birch/
+1 SEX M
+1 FAMC @F1@
+1 FAMS @F7@
+0 @W7@ INDI
+1 NAME Wendy /Elm/
+1 SEX F
+1 FAMS @F7@
+0 @H8@ INDI
+1 NAME Hugo /Yew/
+1 SEX M
+1 FAMS @F8@
+0 @W8@ INDI
+1 NAME Wilma /Hazel/
+1 SEX F
+1 FAMS @F8@
+0 @H9@ INDI
+1 NAME Harold /Lime/
+1 SEX M
+1 FAMS @F9@
+1 FAMS @F10@
+0 @W9@ INDI
+1 NAME Winifred /Lime/
+1 SEX F
+1 FAMS @F9@
+1 FAMS @F10@
+0 @C1@ INDI
+1 NAME Carl /Birch/
+1 SEX M
+1 FAMC @F1@
+1 FAMC @F2@
+2 PEDI Adopted
+0 @C2@ INDI
+1 NAME Clara /Ash/
+1 SEX F
+1 FAMC @F2@
+2 PEDI adopted
+0 @C4@ INDI
+1 NAME Colin /Fir/
+1 SEX M
+1 FAMC @F3@
+2 PEDI foster
+0 @C5@ INDI
+1 NAME Cora /Birch/
+1 SEX F
+1 FAMC @F1@
+0 @C6@ INDI
+1 NAME Cyril /Pine/
+1 SEX M
+0 @C7@ INDI
+1 NAME Celia /Pine/
+1 SEX F
+1 FAMC @F5@
+0 @C8@ INDI
+1 NAME Conor /Oak/
+1 SEX M
+1 FAMC @F6@
+0 @C9@ INDI
+1 NAME Cecil /Birch/
+1 SEX M
+1 FAMC @F99@
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @P1@
+1 WIFE @M1@
+1 CHIL @H7@
+1 CHIL @C1@
+1 CHIL @C5@
+1 CHIL @C9@
+0 @F2@ FAM
+1 HUSB @AP@
+1 WIFE @AM@
+1 CHIL @C1@
+1 CHIL @C2@
+0 @F3@ FAM
+1 HUSB @FP@
+1 WIFE @FM@
+1 CHIL @C4@
+0 @F4@ FAM
+1 HUSB @SF@
+1 WIFE @M1@
+1 CHIL @C5@
+0 @F5@ FAM
+1 HUSB @X99@
+1 HUSB @P5@
+1 WIFE @M5@
+1 CHIL @C6@
+0 @F6@ FAM
+1 WIFE @M6@
+1 MARR
+1 CHIL @C8@
+0 @F7@ FAM
+1 HUSB @H7@
+1 WIFE @W7@
+1 MARR
+0 @F8@ FAM
+1 HUSB @H8@
+1 WIFE @W8@
+0 @F9@ FAM
+1 HUSB @H9@
+1 WIFE @W9@
+0 @F10@ FAM
+1 HUSB @H9@
+1 WIFE @W9@
+1 MARR
+0 TRLR

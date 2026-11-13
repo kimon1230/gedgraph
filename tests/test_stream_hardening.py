@@ -52,6 +52,11 @@ def _flush_raises(exc):
         def flush(self):
             raise exc
 
+        def close(self):
+            # The inherited close() flushes first, so the finalizer would raise
+            # at GC time and surface as an unraisable exception.
+            self.buffer.close()
+
     return Double(io.BytesIO(), encoding="utf-8", newline="", write_through=True)
 
 
