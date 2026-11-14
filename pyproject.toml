@@ -20,9 +20,12 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Sociology :: Genealogy",
 ]
 dependencies = [
+    # <0.6 is load-bearing: parser.py hooks the private GedcomReader._make_record
+    # and Date.freeze to survive unparseable dates. Re-check both before widening.
     "ged4py>=0.5.2,<0.6",
 ]
 
@@ -31,12 +34,12 @@ dev = [
     # Floors track what CI and local development actually run. ruff and black
     # are capped because CI gates on them -- a new rule or style release should
     # be adopted deliberately, not turn an unrelated PR red.
-    "pytest>=9.0",
+    "pytest>=9.0,<10",
     "black>=26.5,<27",
     "ruff>=0.16,<0.18",
-    "pip-audit>=2.10",
-    "build>=1.0.0",
-    "pytest-cov>=7.0",
+    "pip-audit>=2.10,<3",
+    "build>=1.0.0,<2",
+    "pytest-cov>=7.0,<8",
     "mypy>=2.3,<3",
 ]
 
@@ -55,7 +58,7 @@ exclude = ["tests*"]
 
 [tool.black]
 line-length = 100
-target-version = ['py311', 'py312', 'py313']
+target-version = ['py311', 'py312', 'py313', 'py314']
 
 [tool.mypy]
 python_version = "3.11"
@@ -82,3 +85,13 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+# An unclosed GEDCOM reader surfaces as an unraisable ResourceWarning at GC time,
+# which pytest only reports as a warning unless told otherwise. The failure lands on
+# whichever test is running when GC fires, not necessarily the leaker -- or, after
+# the last test, as an internal error below an all-passed summary, so trust the exit
+# code. Rerun the suspect module with PYTHONTRACEMALLOC=10 to see where the object
+# was created.
+filterwarnings = [
+    "error::ResourceWarning",
+    "error::pytest.PytestUnraisableExceptionWarning",
+]

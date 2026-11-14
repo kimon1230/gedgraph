@@ -4,10 +4,17 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # A just-published release gets a week for a compromise to be caught first.
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns: ["*"]
+        # It mints the PyPI upload credential: always its own PR.
+        exclude-patterns: ["pypa/gh-action-pypi-publish"]
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7

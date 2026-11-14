@@ -1,0 +1,105 @@
+0 HEAD
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @GP@ INDI
+1 NAME Grandpa /Collapse/
+1 SEX M
+1 FAMS @FA@
+0 @GM@ INDI
+1 NAME Grandma /Collapse/
+1 SEX F
+1 FAMS @FA@
+0 @F@ INDI
+1 NAME Father /Collapse/
+1 SEX M
+1 FAMC @FA@
+1 FAMS @FC@
+0 @U@ INDI
+1 NAME Uncle /Collapse/
+1 SEX M
+1 FAMC @FA@
+1 FAMS @FB@
+0 @UW@ INDI
+1 NAME Aunt /Collapse/
+1 SEX F
+1 FAMS @FB@
+0 @M@ INDI
+1 NAME Mother /Collapse/
+1 SEX F
+1 FAMC @FB@
+1 FAMS @FC@
+0 @X@ INDI
+1 NAME Child /Collapse/
+1 SEX M
+1 FAMC @FC@
+1 FAMS @FD@
+0 @XW@ INDI
+1 NAME Wife /Collapse/
+1 SEX F
+1 FAMS @FD@
+0 @Y@ INDI
+1 NAME Grandchild /Collapse/
+1 SEX M
+1 FAMC @FD@
+0 @FA@ FAM
+1 HUSB @GP@
+1 WIFE @GM@
+1 CHIL @F@
+1 CHIL @U@
+0 @FB@ FAM
+1 HUSB @U@
+1 WIFE @UW@
+1 CHIL @M@
+0 @FC@ FAM
+1 HUSB @F@
+1 WIFE @M@
+1 CHIL @X@
+0 @FD@ FAM
+1 HUSB @X@
+1 WIFE @XW@
+1 CHIL @Y@
+0 @P@ INDI
+1 NAME Patriarch /Older/
+1 SEX M
+1 FAMS @FP@
+0 @A@ INDI
+1 NAME Elder /Older/
+1 SEX M
+1 FAMC @FP@
+1 FAMS @FQ@
+0 @B@ INDI
+1 NAME Middle /Older/
+1 SEX M
+1 FAMC @FQ@
+1 FAMS @FR@
+0 @F2@ INDI
+1 NAME Grandson /Older/
+1 SEX M
+1 FAMC @FR@
+1 FAMS @FZ@
+0 @M2@ INDI
+1 NAME Greataunt /Older/
+1 SEX F
+1 FAMC @FP@
+1 FAMS @FZ@
+0 @Z@ INDI
+1 NAME Focal /Older/
+1 SEX M
+1 FAMC @FZ@
+0 @FP@ FAM
+1 HUSB @P@
+1 CHIL @A@
+1 CHIL @M2@
+0 @FQ@ FAM
+1 HUSB @A@
+1 CHIL @B@
+0 @FR@ FAM
+1 HUSB @B@
+1 CHIL @F2@
+0 @FZ@ FAM
+1 HUSB @F2@
+1 WIFE @M2@
+1 CHIL @Z@
+0 TRLR

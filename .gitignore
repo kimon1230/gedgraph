@@ -5,6 +5,7 @@ __pycache__/
 *.so
 .*
 !.github
+!.pre-commit-config.yaml
 .Python
 .venv/
 venv/
@@ -25,11 +26,22 @@ htmlcov/
 
 # AI Assistant Instructions
 CLAUDE.md
+AGENTS.md
+GEMINI.md
 .cursorrules
 .cursor/
 .github/copilot-instructions.md
 .aider*
 .continue/
+
+# GEDCOM inputs hold real people's names and dates; only synthetic fixtures belong here.
+# Any case (git matches case-sensitively on Linux), and backup copies like x.ged.bak.
+*.[gG][eE][dD]
+*.[gG][eE][dD].*
+*.[gG][eE][dD][cC][oO][mM]
+*.[gG][eE][dD][cC][oO][mM].*
+!tests/fixtures/*.ged
+tests/fixtures/.*
 
 # Output files
 *.dot
@@ -46,9 +58,23 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
 
 # Credentials (defense-in-depth)
 *.pem
 *.key
 *.p12
+*.pfx
+*.jks
+*.keystore
+*.crt
+*.gpg
 *.env
+credentials.json
+service-account*.json
+*secret*
+!gedgraph/**/*secret*.py
+!tests/**/*secret*.py
+terraform.tfstate*
+*.tfvars
+pulumi.*.yaml

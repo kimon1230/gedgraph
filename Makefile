@@ -1,7 +1,10 @@
 .PHONY: venv install test lint fmt audit build clean distclean
 
+# Debian and Ubuntu ship python3 with no bare `python`.
+PYTHON ?= python3
+
 venv:
-	python -m venv .venv
+	$(PYTHON) -m venv .venv
 	@echo "Virtual environment created. Activate with: source .venv/bin/activate"
 
 install:

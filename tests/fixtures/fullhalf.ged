@@ -1,0 +1,73 @@
+0 HEAD
+1 CHAR UTF-8
+0 @GP1@ INDI
+1 NAME George /Gray/
+1 SEX M
+1 FAMS @A@
+0 @GM1@ INDI
+1 NAME Grace /Gray/
+1 SEX F
+1 FAMS @A@
+0 @M@ INDI
+1 NAME Mother /X/
+1 SEX F
+1 FAMC @A@
+1 FAMS @XF@
+0 @F@ INDI
+1 NAME Fred /Gray/
+1 SEX M
+1 FAMC @A@
+1 FAMS @YF@
+0 @GP2@ INDI
+1 NAME Gordon /Green/
+1 SEX M
+1 FAMS @B1@
+1 FAMS @B2@
+0 @W1@ INDI
+1 NAME Wanda /Green/
+1 SEX F
+1 FAMS @B1@
+0 @W2@ INDI
+1 NAME Willa /Green/
+1 SEX F
+1 FAMS @B2@
+0 @F2@ INDI
+1 NAME Felix /Green/
+1 SEX M
+1 FAMC @B1@
+1 FAMS @XF@
+0 @M2@ INDI
+1 NAME Mona /Green/
+1 SEX F
+1 FAMC @B2@
+1 FAMS @YF@
+0 @X@ INDI
+1 NAME Xena /X/
+1 SEX F
+1 FAMC @XF@
+0 @Y@ INDI
+1 NAME Yuri /Y/
+1 SEX M
+1 FAMC @YF@
+0 @A@ FAM
+1 HUSB @GP1@
+1 WIFE @GM1@
+1 CHIL @M@
+1 CHIL @F@
+0 @B1@ FAM
+1 HUSB @GP2@
+1 WIFE @W1@
+1 CHIL @F2@
+0 @B2@ FAM
+1 HUSB @GP2@
+1 WIFE @W2@
+1 CHIL @M2@
+0 @XF@ FAM
+1 HUSB @F2@
+1 WIFE @M@
+1 CHIL @X@
+0 @YF@ FAM
+1 HUSB @F@
+1 WIFE @M2@
+1 CHIL @Y@
+0 TRLR
