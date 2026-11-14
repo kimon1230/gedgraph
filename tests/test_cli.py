@@ -299,15 +299,18 @@ def test_restricted_people_are_private_by_default(tmp_path, capsys, flag, name, 
 
 @pytest.mark.skipif(os.name != "posix", reason="a 300-byte name is valid on some Windows setups")
 @pytest.mark.parametrize("which", ["gedcom", "output"])
-def test_overlong_path_is_a_one_line_error(tmp_path, which):
+def test_overlong_path_is_a_one_line_error(tmp_path, capsys, which):
     long = str(tmp_path / ("a" * 300))
     ged, out = (long, str(tmp_path / "o.dot")) if which == "gedcom" else (SAMPLE_GED, long)
     argv = ["gedgraph", "-q", "pedigree", ged, "@I1@", "-o", out]
     with patch("sys.argv", argv), pytest.raises(SystemExit) as exc:
         main()
-    message = str(exc.value.code)
+    # Python 3.14's Path.exists() returns False for an overlong name where 3.13
+    # raised, so the input case may end as "not found" (exit 1) instead.
+    code = exc.value.code
+    message = code if isinstance(code, str) else capsys.readouterr().err
     assert message.startswith("Error: ")
-    assert "too long" in message
+    assert message.count("\n") <= 1
 
 
 @pytest.mark.skipif(os.name != "posix", reason="file modes")
@@ -361,10 +364,12 @@ def test_failed_write_keeps_the_old_file(tmp_path):
     out = tmp_path / "o.dot"
     out.write_text("old chart", encoding="utf-8")
     argv = ["gedgraph", "-q", "pedigree", SAMPLE_GED, "@I1@", "-o", str(out)]
-    disk_full = patch("gedgraph.cli.os.fdopen", side_effect=OSError("disk full"))
-    with patch("sys.argv", argv), disk_full, pytest.raises(SystemExit) as exc:
+    # The temporary file is closed by then, as after a real write error, so
+    # Windows lets it be deleted.
+    no_rename = patch("gedgraph.cli.Path.replace", side_effect=OSError("rename refused"))
+    with patch("sys.argv", argv), no_rename, pytest.raises(SystemExit) as exc:
         main()
-    assert exc.value.code == "Error: disk full"
+    assert exc.value.code == "Error: rename refused"
     assert out.read_text(encoding="utf-8") == "old chart"
     assert sorted(p.name for p in tmp_path.iterdir()) == ["o.dot"]
 
