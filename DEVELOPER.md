@@ -397,6 +397,10 @@ source .venv/bin/activate
 
 # Install in editable mode with dev dependencies
 pip install -e ".[dev]"
+
+# Secret scanning on every commit (gitleaks, from .pre-commit-config.yaml)
+pip install pre-commit
+pre-commit install
 ```
 
 ## Testing
@@ -413,8 +417,9 @@ tests/
 │   ├── layout.ged            # Families for chart layout and node-id tests
 │   ├── collapse.ged          # Pedigree collapse at uneven depths
 │   ├── links.ged             # One-sided links, PEDI, step children, childless couples
-│   └── fullhalf.ged          # Cousins related through both a full and a half line
-├── conftest.py               # Shared fixtures
+│   ├── fullhalf.ged          # Cousins related through both a full and a half line
+│   └── cousins.ged           # Male-line cousins, one married to the other's sister
+├── conftest.py               # Shared fixtures: parser, pathfinder, links, cousins, load
 ├── test_parser.py            # Parser unit tests, including year display
 ├── test_pathfinder.py        # Path finding unit tests
 ├── test_kinship.py           # Relationship naming
@@ -606,7 +611,10 @@ nothing reached PyPI. Fix the cause, then
 
 ## Performance Considerations
 
-- **Parser**: GEDCOM files are loaded entirely into memory for fast access
+- **Parser**: GEDCOM files are loaded entirely into memory for fast access. Load
+  time is almost all ged4py reading and parsing every record (about 20 s for
+  21,000 people); gedgraph's own link indexes are linear in the file, using
+  dicts as ordered sets so a family with thousands of children stays cheap
 - **GedcomReader**: Kept open during program execution to allow lazy reference resolution
 - **Path Finding**: BFS finds shortest paths level by level and expands each
   `(person, descended)` state once, so the work is bounded by twice the number
@@ -631,7 +639,8 @@ For very large GEDCOM files (>100K individuals), consider:
   large file give up sooner. When it is the reason nothing was found, the CLI
   says `--max-depth N reached` rather than that there is no relationship
 - Heavily intermarried trees can have many equally short paths; only the first
-  10,000 (`_MAX_PATHS`) are rebuilt and ranked
+  10,000 (`_MAX_PATHS`) are rebuilt and ranked. Past that limit the route kept
+  can be the male line through half-siblings when a full-blood one also exists
 
 ## Dependencies
 
